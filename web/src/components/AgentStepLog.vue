@@ -1,0 +1,1 @@
+<template><div class="steps"><div v-for="(s,i) in steps" :key="i" class="step"><el-tag :type="s.status==='done'?'success':'warning'">{{s.status}}</el-tag><span>{{s.node}}</span></div></div></template><script setup>defineProps({steps:{type:Array,default:()=>[]}})</script><style>.steps{display:flex;gap:8px;flex-wrap:wrap}.step{display:flex;align-items:center;gap:5px}</style>

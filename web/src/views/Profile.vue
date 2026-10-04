@@ -1,0 +1,188 @@
+<template>
+  <div class="page">
+    <!-- 个人资料卡片 -->
+    <div class="card profile-card">
+      <div class="hero">
+        <div class="avatar" :style="{background: avatarColor}">{{ nickname.slice(0,1).toUpperCase() }}</div>
+        <div class="hero-info">
+          <h2>{{ nickname }}</h2>
+          <p>{{ userEmail }}</p>
+        </div>
+        <el-button @click="editVisible = true">编辑资料</el-button>
+      </div>
+    </div>
+
+    <!-- 数据统计 -->
+    <div class="stat-grid">
+      <div class="stat"><div class="stat-num">{{ noteCount }}</div><div class="stat-label">已存笔记</div></div>
+      <div class="stat"><div class="stat-num">{{ expenseCount }}</div><div class="stat-label">记账笔数</div></div>
+      <div class="stat"><div class="stat-num">¥{{ weekSpent }}</div><div class="stat-label">累计支出</div></div>
+      <div class="stat"><div class="stat-num">¥{{ earned }}</div><div class="stat-label">累计收入</div></div>
+      <div class="stat"><div class="stat-num">{{ todoCount }}</div><div class="stat-label">待办总数</div></div>
+      <div class="stat"><div class="stat-num">{{ convCount }}</div><div class="stat-label">历史会话</div></div>
+    </div>
+
+    <!-- AI 印象 -->
+    <div class="card impression">
+      <div class="imp-head">
+        <div>
+          <h3>🤖 我的 AI 印象</h3>
+          <p class="imp-sub">Agent 根据和你的对话、笔记、生活数据生成的画像</p>
+        </div>
+        <el-button type="primary" :loading="impressing" @click="genImpression">
+          {{ impression ? '重新生成' : '生成 AI 印象' }}
+        </el-button>
+      </div>
+      <div v-if="impression" class="imp-body">{{ impression }}</div>
+      <div v-else class="imp-empty">还没有生成，点上面按钮让 Agent 认识你</div>
+    </div>
+
+    <!-- 设置 -->
+    <div class="section">
+      <h3>常用功能</h3>
+      <div class="actions">
+        <button class="action" @click="$router.push('/chat')">
+          <span class="a-icon">💬</span>
+          <div><div class="a-title">继续对话</div><div class="a-desc">和多智能体聊聊今天的计划</div></div>
+        </button>
+        <button class="action" @click="$router.push('/notes')">
+          <span class="a-icon">📚</span>
+          <div><div class="a-title">管理资料</div><div class="a-desc">上传笔记，让 Agent 更懂你</div></div>
+        </button>
+        <button class="action" @click="$router.push('/accounting')">
+          <span class="a-icon">💰</span>
+          <div><div class="a-title">查看账单</div><div class="a-desc">回顾近期消费记录</div></div>
+        </button>
+        <button class="action" @click="logout">
+          <span class="a-icon">🚪</span>
+          <div><div class="a-title">退出登录</div><div class="a-desc">当前账号：{{ userEmail }}</div></div>
+        </button>
+      </div>
+    </div>
+
+    <!-- 编辑弹窗 -->
+    <el-dialog v-model="editVisible" title="编辑资料" width="400px">
+      <el-form label-width="80px">
+        <el-form-item label="昵称">
+          <el-input v-model="nicknameInput" placeholder="给自己起个名字" />
+        </el-form-item>
+        <el-form-item label="头像颜色">
+          <el-color-picker v-model="avatarColorInput" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="editVisible = false">取消</el-button>
+        <el-button type="primary" @click="saveProfile">保存</el-button>
+      </template>
+    </el-dialog>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted } from 'vue'
+import api from '../api/request'
+import { useAuthStore } from '../stores/auth'
+import { useRouter } from 'vue-router'
+
+const auth = useAuthStore(); const router = useRouter()
+const userEmail = ref('')
+const noteCount = ref(0); const expenseCount = ref(0)
+const weekSpent = ref('0.00'); const earned = ref('0.00')
+const convCount = ref(0); const todoCount = ref(0)
+
+const nickname = ref('我')
+const avatarColor = ref('#2563eb')
+const impression = ref('')
+const impressing = ref(false)
+const editVisible = ref(false)
+const nicknameInput = ref('')
+const avatarColorInput = ref('#2563eb')
+
+onMounted(async () => {
+  userEmail.value = auth.user || ''
+  const saved = JSON.parse(localStorage.getItem('lifeagent_profile') || '{}')
+  nickname.value = saved.nickname || (userEmail.value.split('@')[0] || '我')
+  avatarColor.value = saved.avatarColor || '#2563eb'
+  try { const { data } = await api.get('/notes/stats'); noteCount.value = data.note_count } catch {}
+  try {
+    const exps = (await api.get('/life/expenses')).data
+    expenseCount.value = exps.length
+    weekSpent.value = exps.filter(e=>e.kind!=='income').reduce((s,r)=>s+Number(r.amount),0).toFixed(2)
+    earned.value = exps.filter(e=>e.kind==='income').reduce((s,r)=>s+Number(r.amount),0).toFixed(2)
+  } catch {}
+  try { todoCount.value = (await api.get('/life/todos')).data.length } catch {}
+  convCount.value = JSON.parse(localStorage.getItem('lifeagent_conversations') || '[]').length
+})
+
+function openEdit(){
+  nicknameInput.value = nickname.value
+  avatarColorInput.value = avatarColor.value
+  editVisible.value = true
+}
+// 让点"编辑资料"打开弹窗
+import { watch } from 'vue'
+watch(editVisible, v => { if(v) openEdit() })
+
+function saveProfile(){
+  nickname.value = nicknameInput.value || '我'
+  avatarColor.value = avatarColorInput.value
+  localStorage.setItem('lifeagent_profile', JSON.stringify({ nickname: nickname.value, avatarColor: avatarColor.value }))
+  editVisible.value = false
+}
+async function genImpression(){
+  impressing.value = true
+  try {
+    const { data } = await api.post('/profile/impression')
+    impression.value = data.impression
+  } catch(e) { impression.value = '生成失败：' + (e.response?.data?.detail || e.message) }
+  impressing.value = false
+}
+
+function logout(){ auth.logout(); router.push('/login') }
+</script>
+
+<style scoped>
+.page { max-width: 1100px; margin: 0 auto; width: 100%; }
+.card { background: #fff; border-radius: 16px; padding: 28px; box-shadow: 0 1px 3px rgba(0,0,0,.04); margin-bottom: 20px; }
+.hero { display: flex; align-items: center; gap: 18px; }
+.avatar { width: 64px; height: 64px; border-radius: 50%; color: #fff; font-size: 26px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.hero-info { flex: 1; }
+.hero-info h2 { margin: 0; font-size: 20px; color: #111827; }
+.hero-info p { margin: 4px 0 0; font-size: 13px; color: #6b7280; }
+
+.stat-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; margin-bottom: 24px; }
+.stat { background: #fff; border-radius: 12px; padding: 18px 10px; text-align: center; }
+.stat-num { font-size: 22px; font-weight: 700; color: #2563eb; }
+.stat-label { font-size: 12px; color: #6b7280; margin-top: 4px; }
+
+.impression { background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%); border: 1px solid #dbeafe; }
+.imp-head { display: flex; justify-content: space-between; align-items: flex-start; }
+.imp-head h3 { margin: 0; font-size: 17px; color: #111827; }
+.imp-sub { font-size: 12px; color: #6b7280; margin: 4px 0 0; }
+.imp-body { margin-top: 16px; font-size: 14px; line-height: 1.9; color: #1f2937; white-space: pre-wrap; }
+.imp-empty { margin-top: 16px; color: #9ca3af; font-size: 13px; text-align: center; padding: 20px; }
+.stat-num { font-size: 22px; font-weight: 700; color: #2563eb; }
+.stat-label { font-size: 12px; color: #6b7280; margin-top: 4px; }
+
+.section h3 { font-size: 15px; color: #111827; margin: 0 0 12px; }
+.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.action {
+  display: flex; align-items: center; gap: 14px;
+  background: #fff; border: none; border-radius: 12px;
+  padding: 16px; cursor: pointer; text-align: left;
+  transition: all .15s;
+}
+.action:hover { box-shadow: 0 4px 12px rgba(0,0,0,.06); transform: translateY(-1px); }
+.a-icon { font-size: 24px; }
+.a-title { font-size: 14px; font-weight: 600; color: #111827; }
+.a-desc { font-size: 12px; color: #6b7280; margin-top: 2px; }
+
+@media (max-width: 900px) {
+  .stat-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 600px) {
+  .stat-grid { grid-template-columns: repeat(2, 1fr); }
+  .actions { grid-template-columns: 1fr; }
+  .hero { flex-direction: column; align-items: flex-start; }
+}
+</style>

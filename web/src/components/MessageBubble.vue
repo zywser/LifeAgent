@@ -1,0 +1,1 @@
+<template><div :class="['bubble',role]"><b>{{role==='user'?'我':'Life Agent'}}</b><div>{{content}}</div></div></template><script setup>defineProps({role:String,content:String})</script><style>.bubble{padding:12px;margin:8px 0;border-radius:8px;max-width:80%;white-space:pre-wrap}.user{margin-left:auto;background:#dbeafe}.assistant{background:#fff;border:1px solid #e5e7eb}</style>

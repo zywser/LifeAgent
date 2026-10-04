@@ -1,0 +1,1 @@
+import api from './request'; export const listNotes=()=>api.get('/notes'); export const uploadNote=f=>api.post('/notes/upload',f,{headers:{'Content-Type':'multipart/form-data'}}); export const deleteNote=id=>api.delete(`/notes/${id}`)
