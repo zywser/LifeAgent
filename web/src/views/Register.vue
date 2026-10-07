@@ -61,14 +61,14 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 </script>
 
 <style scoped>
-.auth-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #eff6ff 0%, #f3f5f9 100%); }
-.auth-card { width: 380px; background: #fff; border-radius: 18px; padding: 36px 32px; box-shadow: 0 10px 40px rgba(37,99,235,.08); }
-.brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 16px; color: #111827; margin-bottom: 24px; }
-.dot { width: 22px; height: 22px; border-radius: 50%; background: #2563eb; }
+.auth-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--primary-bg) 0%, var(--bg) 100%); }
+.auth-card { width: 380px; background: var(--card); border-radius: 18px; padding: 36px 32px; box-shadow: 0 10px 40px var(--shadow); }
+.brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 16px; color: var(--text); margin-bottom: 24px; }
+.dot { width: 22px; height: 22px; border-radius: 50%; background: var(--primary); }
 h2 { margin: 0 0 6px; font-size: 22px; }
-.desc { margin: 0 0 22px; color: #9ca3af; font-size: 13px; }
+.desc { margin: 0 0 22px; color: var(--text-3); font-size: 13px; }
 .block { width: 100%; }
 .code-row { display: flex; gap: 8px; width: 100%; }
-.switch { margin-top: 16px; text-align: center; font-size: 13px; color: #6b7280; }
-.switch a { color: #2563eb; text-decoration: none; }
+.switch { margin-top: 16px; text-align: center; font-size: 13px; color: var(--text-2); }
+.switch a { color: var(--primary); text-decoration: none; }
 </style>

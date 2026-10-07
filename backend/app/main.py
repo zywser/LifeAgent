@@ -40,6 +40,10 @@ async def lifespan(app: FastAPI):
             ucols = [c["name"] for c in insp.get_columns("users")]
             if "email_notify" not in ucols:
                 conn.execute(text("ALTER TABLE users ADD email_notify INT DEFAULT 1"))
+            if "username" not in ucols:
+                conn.execute(text("ALTER TABLE users ADD username VARCHAR(64) DEFAULT ''"))
+            if "avatar" not in ucols:
+                conn.execute(text("ALTER TABLE users ADD avatar VARCHAR(255) DEFAULT ''"))
     start_scheduler()
     try:
         yield

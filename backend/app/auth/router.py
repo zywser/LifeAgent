@@ -7,8 +7,6 @@ from .service import hash_password, verify_password, create_access_token, create
 from ..config import settings
 from ..mailer import send_email, render_verify_html
 import hashlib, random
-from email.mime.text import MIMEText
-from email.header import Header
 from datetime import datetime, timezone
 import redis as redis_lib
 
@@ -39,17 +37,6 @@ class RefreshRequest(BaseModel):
 def _send_verify_email(to_email: str, code: str):
     if not send_email(to_email, "【Life Agent】邮箱验证码", render_verify_html(code, settings.verify_code_ttl // 60)):
         raise HTTPException(500, "邮件发送失败，请检查邮件服务配置")
-    try:
-        if settings.smtp_port == 465:
-            server = smtplib.SMTP_SSL(settings.smtp_host, settings.smtp_port, timeout=15)
-        else:
-            server = smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=15)
-            server.starttls()
-        server.login(settings.smtp_user, settings.smtp_password)
-        server.sendmail(settings.smtp_from or settings.smtp_user, [to_email], msg.as_string())
-        server.quit()
-    except Exception as e:
-        raise HTTPException(500, f"邮件发送失败：{e}")
 
 
 @router.post("/send_code")
@@ -76,9 +63,9 @@ def register(data: RegisterData, db: Session = Depends(get_db)):
     if not saved or saved != data.verify_code:
         raise HTTPException(400, "验证码错误或已过期，请重新获取")
     _r.delete(key)
-    user = User(email=data.email, password_hash=hash_password(data.password))
+    user = User(email=data.email, password_hash=hash_password(data.password), username=f"L{random.randint(0, 999999):06d}")
     db.add(user); db.commit(); db.refresh(user)
-    return {"access_token": create_access_token(user.id), "refresh_token": create_refresh_token(db, user.id), "token_type": "bearer"}
+    return {"access_token": create_access_token(user.id), "refresh_token": create_refresh_token(db, user.id), "token_type": "bearer", "username": user.username, "email": user.email}
 
 
 @router.post("/login")
@@ -86,7 +73,7 @@ def login(data: Credentials, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == data.email).first()
     if not user or not verify_password(data.password, user.password_hash):
         raise HTTPException(401, "invalid credentials")
-    return {"access_token": create_access_token(user.id), "refresh_token": create_refresh_token(db, user.id), "token_type": "bearer"}
+    return {"access_token": create_access_token(user.id), "refresh_token": create_refresh_token(db, user.id), "token_type": "bearer", "username": user.username, "email": user.email}
 
 
 @router.post("/refresh")
@@ -99,4 +86,5 @@ def refresh(data: RefreshRequest, db: Session = Depends(get_db)):
     if not record or record.expires_at.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
         raise HTTPException(401, "refresh token expired")
     record.revoked = 1; db.commit()
-    return {"access_token": create_access_token(int(payload["sub"])), "refresh_token": create_refresh_token(db, int(payload["sub"])), "token_type": "bearer"}
+    me = db.query(User).filter(User.id == int(payload["sub"])).first()
+    return {"access_token": create_access_token(int(payload["sub"])), "refresh_token": create_refresh_token(db, int(payload["sub"])), "token_type": "bearer", "username": me.username if me else "", "email": me.email if me else ""}

@@ -9,6 +9,8 @@ class User(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     email_notify: Mapped[int] = mapped_column(Integer, default=1)  # 1=开启邮件提醒
+    username: Mapped[str] = mapped_column(String(64), default="")  # 默认 L+6位随机数字
+    avatar: Mapped[str] = mapped_column(String(255), default="")  # 头像相对路径 notes/uploads/avatars/..
     password_hash: Mapped[str] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(back_populates="user", cascade="all, delete-orphan")
