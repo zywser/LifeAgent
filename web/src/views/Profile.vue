@@ -207,6 +207,9 @@ async function onCropSave(){
     fd.append('file', blob, 'avatar-' + Date.now() + '.jpg')
     const { data } = await api.post('/profile/avatar', fd)
     avatarInput.value = data.avatar
+    avatar.value = data.avatar
+    localStorage.setItem('lifeagent_profile', JSON.stringify({ nickname: nickname.value, avatarColor: avatarColor.value, avatar: avatar.value }))
+    window.dispatchEvent(new Event('profile-updated'))
     cropVisible.value = false
     alert('头像已更新')
   } catch(e) { alert('上传失败：' + (e.response?.data?.detail || e.message)) }
