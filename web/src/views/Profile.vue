@@ -196,10 +196,12 @@ function openEdit(){
 import { watch } from 'vue'
 watch(editVisible, v => { if(v) openEdit() })
 
-function saveProfile(){
+async function saveProfile(){
   nickname.value = nicknameInput.value || '我'
   avatarColor.value = avatarColorInput.value
   if (avatarInput.value) avatar.value = avatarInput.value
+  // 昵称持久化到账号（登录/换设备后仍保持）
+  try { await api.put('/profile/me', { username: nickname.value }) } catch {}
   localStorage.setItem('lifeagent_profile', JSON.stringify({ nickname: nickname.value, avatarColor: avatarColor.value, avatar: avatar.value }))
   window.dispatchEvent(new Event('profile-updated'))
   editVisible.value = false

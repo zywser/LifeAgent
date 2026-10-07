@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, File, UploadFile, HTTPException
+from pydantic import BaseModel
 from pathlib import Path
 import uuid
 from sqlalchemy.orm import Session
@@ -10,6 +11,23 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from ..vector_store.factory import get_memory_store, get_notes_store
 
 router = APIRouter(prefix="/profile", tags=["impression"])
+
+
+class ProfileUpdate(BaseModel):
+    username: str
+
+
+@router.put("/me")
+def update_profile(data: ProfileUpdate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """保存昵称到账号（User.username），登录/刷新后仍保持。"""
+    name = data.username.strip()
+    if not name:
+        raise HTTPException(400, "昵称不能为空")
+    if len(name) > 40:
+        raise HTTPException(400, "昵称过长，最多 40 字")
+    user.username = name
+    db.commit()
+    return {"username": user.username, "avatar": user.avatar or ""}
 
 @router.post("/impression")
 async def generate_impression(user: User = Depends(get_current_user)):

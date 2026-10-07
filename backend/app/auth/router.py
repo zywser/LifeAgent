@@ -67,7 +67,7 @@ def register(data: RegisterData, db: Session = Depends(get_db)):
     _r.delete(key)
     user = User(email=data.email, password_hash=hash_password(data.password), username=f"L{random.randint(0, 999999):06d}")
     db.add(user); db.commit(); db.refresh(user)
-    return {"access_token": create_access_token(user.id), "refresh_token": create_refresh_token(db, user.id), "token_type": "bearer", "username": user.username, "email": user.email}
+    return {"access_token": create_access_token(user.id), "refresh_token": create_refresh_token(db, user.id), "token_type": "bearer", "username": user.username, "email": user.email, "avatar": user.avatar or ""}
 
 
 @router.post("/login")
@@ -75,7 +75,7 @@ def login(data: Credentials, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == data.email).first()
     if not user or not verify_password(data.password, user.password_hash):
         raise HTTPException(401, "invalid credentials")
-    return {"access_token": create_access_token(user.id), "refresh_token": create_refresh_token(db, user.id), "token_type": "bearer", "username": user.username, "email": user.email}
+    return {"access_token": create_access_token(user.id), "refresh_token": create_refresh_token(db, user.id), "token_type": "bearer", "username": user.username, "email": user.email, "avatar": user.avatar or ""}
 
 
 @router.post("/refresh")
@@ -89,7 +89,7 @@ def refresh(data: RefreshRequest, db: Session = Depends(get_db)):
         raise HTTPException(401, "refresh token expired")
     record.revoked = 1; db.commit()
     me = db.query(User).filter(User.id == int(payload["sub"])).first()
-    return {"access_token": create_access_token(int(payload["sub"])), "refresh_token": create_refresh_token(db, int(payload["sub"])), "token_type": "bearer", "username": me.username if me else "", "email": me.email if me else ""}
+    return {"access_token": create_access_token(int(payload["sub"])), "refresh_token": create_refresh_token(db, int(payload["sub"])), "token_type": "bearer", "username": me.username if me else "", "email": me.email if me else "", "avatar": me.avatar if me else ""}
 
 
 # ================= 更换邮箱（老邮箱验证 → 新邮箱验证） =================
