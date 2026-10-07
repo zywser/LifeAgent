@@ -1,3 +1,5 @@
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from ..deps import get_current_user
@@ -17,6 +19,14 @@ class Snapshot(BaseModel):
 
 @router.post("/today")
 async def today_summary(snap: Snapshot, user: User = Depends(get_current_user)):
+    # 按北京时间判断当前时段问候语
+    now = datetime.now(ZoneInfo("Asia/Shanghai"))
+    h = now.hour
+    if 5 <= h < 11: greet = "早安"
+    elif 11 <= h < 14: greet = "中午好"
+    elif 14 <= h < 18: greet = "下午好"
+    elif 18 <= h < 23: greet = "晚上好"
+    else: greet = "夜深了"
     lines = [f"用户：{user.email}", f"待办未完成：{len([t for t in snap.todos if not t.get('done')])} 条"]
     if snap.todos:
         for t in snap.todos[:5]:
@@ -32,8 +42,8 @@ async def today_summary(snap: Snapshot, user: User = Depends(get_current_user)):
         lines.append(f"存钱目标：{snap.savings.get('name','')} ¥{snap.savings.get('saved',0)}/¥{snap.savings.get('target',0)}")
 
     data = "\n".join(lines)
-    prompt = f"""你是用户的私人生活管家。根据以下用户今日生活数据，用亲切、简洁的语气生成一段不超过150字的"今日晨间摘要"，像朋友发消息一样：
-- 先说早安
+    prompt = f"""你是用户的私人生活管家。现在是北京时间 {now.strftime('%H:%M')}。根据以下用户今日生活数据，用亲切、简洁的语气生成一段不超过150字的"今日{greet}摘要"，像朋友发消息一样：
+- 开头用"{greet}"打招呼，语气与当前时段匹配
 - 点出今天最重要的事（待办/纪念日）
 - 给出一条贴心建议
 - 不要列点，自然一段话
