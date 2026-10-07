@@ -66,7 +66,7 @@ h2 { font-size: 20px; margin: 0 0 8px; }
 .item { background: var(--card); border-radius: 12px; padding: 14px 18px; }
 .it-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
 .it-kind { font-size: 12px; padding: 2px 10px; border-radius: 10px; background: var(--primary-bg); color: #2563eb; }
-.it-kind.diary { background: #fef3c7; color: #b45309; }
+.it-kind.diary { background: rgba(245,158,11,.15); color: #b45309; }
 .it-time { font-size: 12px; color: var(--text-3); flex: 1; }
 .it-content { font-size: 13px; color: var(--text); line-height: 1.7; white-space: pre-wrap; }
 </style>

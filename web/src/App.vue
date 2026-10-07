@@ -238,6 +238,7 @@ function logout() { auth.logout(); router.push('/login') }
 
 
 <style>
+body { color: var(--text); background: var(--bg); }
 :root {
   --bg: #f3f5f9; --card: #ffffff; --card-2: #f9fafb;
   --sidebar: #eef2f8;

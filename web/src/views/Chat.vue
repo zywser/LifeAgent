@@ -306,7 +306,7 @@ async function send() {
 .tl-status { margin-top: 4px; }
 .badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 10px; line-height: 1.4; }
 .badge.running { background: var(--primary-bg); color: #2563eb; }
-.badge.done { background: #ecfdf5; color: #059669; }
+.badge.done { background: rgba(16,185,129,.12); color: #059669; }
 .badge.waiting { background: var(--hover); color: var(--text-3); }
 .panel-actions { margin-top: 16px; padding-top: 16px; border-top: 1px solid #f0f1f3; }
 .full { width: 100%; }

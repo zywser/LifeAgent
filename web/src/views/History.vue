@@ -101,7 +101,7 @@ async function remove(id) {
   cursor: pointer; transition: all .15s; border: 1px solid var(--border);
 }
 .card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.06); transform: translateY(-2px); border-color: var(--primary-border); }
-.card.new { border-color: #f59e0b; background: #fffbeb; }
+.card.new { border-color: #f59e0b; background: rgba(245,158,11,.12); }
 .new-dot { background: #ef4444; color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 8px; margin-left: 6px; }
 .card-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .card-title {

@@ -158,7 +158,7 @@ async function del(id){
 .row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid #f3f4f6; font-size: 14px; }
 .row:last-child { border: none; }
 .cat { background: var(--primary-bg); color: #2563eb; padding: 2px 10px; border-radius: 10px; font-size: 12px; }
-.cat.income { background: #ecfdf5; color: #059669; }
+.cat.income { background: rgba(16,185,129,.12); color: #059669; }
 .note { flex: 1; color: var(--text); }
 .time { color: var(--text-3); font-size: 12px; }
 .amount { color: #ef4444; font-weight: 600; }

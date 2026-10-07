@@ -80,7 +80,7 @@ onMounted(load)
 .head h2 { margin: 0; font-size: 20px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
 .card { background: var(--card); border-radius: 12px; padding: 22px; text-align: center; border: 1px solid var(--border); }
-.card.done { border-color: #10b981; background: #f0fdf4; }
+.card.done { border-color: #10b981; background: rgba(16,185,129,.12); }
 .h-icon { font-size: 36px; }
 .h-name { font-size: 14px; font-weight: 600; margin: 8px 0 4px; }
 .h-streak { font-size: 12px; color: #f59e0b; margin-bottom: 12px; }

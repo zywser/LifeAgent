@@ -387,8 +387,8 @@ async function openNotifs(){
 .tc-empty { color: var(--text-3); font-size: 13px; text-align: center; padding: 10px 0; }
 .tc-item { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 8px; cursor: pointer; transition: all .15s; }
 .tc-item:hover { background: var(--hover); }
-.tc-item.urgent { background: #fef2f2; }
-.tc-item.urgent:hover { background: #fee2e2; }
+.tc-item.urgent { background: rgba(239,68,68,.12); }
+.tc-item.urgent:hover { background: rgba(239,68,68,.18); }
 .tc-icon { font-size: 16px; flex-shrink: 0; }
 .tc-body { flex: 1; min-width: 0; }
 .tc-text { font-size: 13px; color: var(--text); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -422,7 +422,7 @@ async function openNotifs(){
 .ov-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; }
 .ov-cell { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; background: var(--card-2); border-radius: 10px; }
 .ov-cell.clickable { cursor: pointer; }
-.ov-cell.clickable:hover { background: #eef2ff; }
+.ov-cell.clickable:hover { background: rgba(99,102,241,.12); }
 .ov-label { font-size: 11px; color: var(--text-2); }
 .ov-value { font-size: 17px; font-weight: 700; color: var(--text); }
 .mini-dot { background: var(--danger); color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 8px; margin-left: 4px; }
@@ -433,7 +433,7 @@ async function openNotifs(){
 .recent-row { display: flex; align-items: center; gap: 8px; padding: 11px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
 .recent-row:last-child { border: none; }
 .r-cat { width: 52px; text-align: center; background: var(--primary-bg); color: var(--primary); padding: 1px 0; border-radius: 8px; font-size: 11px; flex-shrink: 0; }
-.r-cat.income { background: #ecfdf5; color: #059669; }
+.r-cat.income { background: rgba(16,185,129,.12); color: #059669; }
 .r-note { flex: 1; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .r-time { width: 76px; text-align: right; font-size: 11px; color: var(--text-3); flex-shrink: 0; }
 .r-amt { width: 78px; text-align: right; color: var(--danger); font-weight: 600; flex-shrink: 0; }

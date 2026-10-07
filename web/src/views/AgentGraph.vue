@@ -70,12 +70,12 @@ function badgeText(name) {
 .node-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; position: relative; }
 .node { width: 110px; padding: 18px 10px; border: 2px solid var(--border); border-radius: 12px; background: var(--card); display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 13px; color: var(--text); }
 .node.running { border-color: #2563eb; background: var(--primary-bg); }
-.node.done { border-color: #10b981; background: #ecfdf5; }
+.node.done { border-color: #10b981; background: rgba(16,185,129,.12); }
 .node-icon { font-size: 22px; }
 .node-label { font-weight: 600; }
 .badge { font-size: 12px; padding: 3px 10px; border-radius: 999px; background: var(--hover); color: var(--text-2); }
 .badge.running { background: var(--primary-border); color: #2563eb; }
-.badge.done { background: #d1fae5; color: #059669; }
+.badge.done { background: rgba(16,185,129,.2); color: #059669; }
 .arrow { position: absolute; top: 38px; right: -16px; font-size: 20px; color: var(--text-3); }
 .supervisor-note { margin-top: 36px; text-align: center; color: var(--text-2); font-size: 13px; }
 

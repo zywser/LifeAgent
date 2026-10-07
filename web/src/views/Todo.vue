@@ -70,7 +70,7 @@ onMounted(load)
 .empty { text-align: center; color: var(--text-3); padding: 40px; }
 .row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid #f3f4f6; font-size: 14px; }
 .row:last-child { border: none; }
-.row.overdue { background: #fef2f2; border-radius: 8px; padding-left: 10px; padding-right: 10px; }
+.row.overdue { background: rgba(239,68,68,.12); border-radius: 8px; padding-left: 10px; padding-right: 10px; }
 .txt { flex: 1; }
 .row.done .txt { text-decoration: line-through; color: var(--text-3); }
 .due { color: #f59e0b; font-size: 12px; }

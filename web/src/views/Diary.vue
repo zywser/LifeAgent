@@ -95,7 +95,7 @@ h2 { font-size: 20px; margin: 0 0 8px; }
 .moods { display: flex; gap: 12px; margin-bottom: 12px; }
 .mood { font-size: 28px; cursor: pointer; opacity: .4; transition: all .15s; }
 .mood.sel { opacity: 1; transform: scale(1.2); }
-.trend { background: #fff7ed; border: 1px solid #fed7aa; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+.trend { background: rgba(249,115,22,.12); border: 1px solid #fed7aa; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
 .trend h3 { margin: 0 0 6px; font-size: 14px; color: #9a3412; }
 .trend p { margin: 0; font-size: 13px; color: #7c2d12; line-height: 1.6; }
 .list { display: flex; flex-direction: column; gap: 12px; }
@@ -106,5 +106,5 @@ h2 { font-size: 20px; margin: 0 0 8px; }
 .e-date { font-size: 12px; color: var(--text-3); flex: 1; }
 .e-ops { display: flex; gap: 2px; }
 .e-text { font-size: 14px; color: var(--text); line-height: 1.6; }
-.e-summary { margin-top: 10px; padding: 10px 12px; background: #f0f9ff; border-radius: 8px; font-size: 13px; color: #0369a1; line-height: 1.6; }
+.e-summary { margin-top: 10px; padding: 10px 12px; background: rgba(59,130,246,.1); border-radius: 8px; font-size: 13px; color: #0369a1; line-height: 1.6; }
 </style>
