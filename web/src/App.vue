@@ -1,7 +1,7 @@
 <template>
   <div class="layout">
     <aside class="sidebar" :class="{ open: sidebarOpen }">
-      <div class="logo"><img v-if="profile.avatar" class="logo-avatar" :src="avatarSrc" alt="" /><span v-else class="logo-dot"></span><span class="logo-text">Life Agent</span></div>
+      <div class="logo"><img v-if="auth.user && profile.avatar" class="logo-avatar" :src="avatarSrc" alt="" /><span v-else class="logo-dot"></span><span class="logo-text">Life Agent</span></div>
       <nav class="nav">
         <div class="nav-group">核心</div>
         <router-link to="/home" class="nav-item">
