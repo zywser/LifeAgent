@@ -264,27 +264,27 @@ function logout() { auth.logout(); router.push('/login') }
   --el-border-color: #334155; --el-border-color-light: #334155; --el-fill-color-light: #2c3a52;
 }
 [data-theme="vivid"] {
-  --bg: #fdf2ee; --card: #ffffff; --card-2: #fff3ec;
-  --sidebar: #ffe9e0;
+  --bg: #fae8de; --card: #fff3e9; --card-2: #ffe9d9;
+  --sidebar: #ffdfcd;
   --text: #26211d; --text-2: #6d625a; --text-3: #a89d94;
   --primary: #ff5a2f; --primary-bg: #ffe9e0; --primary-border: #ffc9b4;
-  --hover: #fff0e8; --border: #f2e2d9; --danger: #f43f5e;
-  --shadow: rgba(255,90,47,.12);
+  --hover: #ffedd9; --border: #efd8c8; --danger: #f43f5e;
+  --shadow: rgba(255,90,47,.15);
   --el-color-primary: #ff5a2f;
-  --el-bg-color: #ffffff; --el-bg-color-overlay: #ffffff; --el-fill-color-blank: #fff3ec;
+  --el-bg-color: #fff3e9; --el-bg-color-overlay: #fff3e9; --el-fill-color-blank: #ffe9d9;
   --el-text-color-primary: #26211d; --el-text-color-regular: #6d625a;
-  --el-border-color: #f2e2d9; --el-border-color-light: #f2e2d9; --el-fill-color-light: #fff0e8;
+  --el-border-color: #efd8c8; --el-border-color-light: #efd8c8; --el-fill-color-light: #ffedd9;
 }
 [data-theme="nature"] {
-  --bg: #f1efe6; --card: #fbfaf4; --card-2: #f2efe4;
-  --sidebar: #e9efe4;
+  --bg: #e7ead9; --card: #f4f2e4; --card-2: #e9ecdb;
+  --sidebar: #dfe5cf;
   --text: #2f3b31; --text-2: #6b786c; --text-3: #9aa79b;
   --primary: #5c7f66; --primary-bg: #e7efe8; --primary-border: #ccdccf;
-  --hover: #efeee2; --border: #e2dfd0; --danger: #c96f4a;
-  --shadow: rgba(92,127,102,.1);
+  --hover: #ececd9; --border: #d8dcc3; --danger: #c96f4a;
+  --shadow: rgba(92,127,102,.12);
   --el-color-primary: #5c7f66;
-  --el-bg-color: #fbfaf4; --el-bg-color-overlay: #fbfaf4; --el-fill-color-blank: #f2efe4;
+  --el-bg-color: #f4f2e4; --el-bg-color-overlay: #f4f2e4; --el-fill-color-blank: #e9ecdb;
   --el-text-color-primary: #2f3b31; --el-text-color-regular: #5a665c;
-  --el-border-color: #e2dfd0; --el-border-color-light: #e2dfd0; --el-fill-color-light: #efeee2;
+  --el-border-color: #d8dcc3; --el-border-color-light: #d8dcc3; --el-fill-color-light: #ececd9;
 }
 </style>
