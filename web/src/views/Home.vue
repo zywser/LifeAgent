@@ -168,7 +168,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api/request'
 import { syncLife } from '../api/sync'
@@ -196,6 +196,7 @@ const conversations = ref([])
 const anniv = ref([])
 const habits = ref([])
 const savings = ref([])
+let notifTimer = null
 
 function daysLeft(a) {
   const now = new Date(); now.setHours(0, 0, 0, 0)
@@ -303,7 +304,16 @@ onMounted(async () => {
     syncLife()
   ]
   await Promise.all(tasks)
+  // 每 10 秒轮询通知：Agent 新提醒自动出现在卡片上，无需手动刷新
+  notifTimer = setInterval(async () => {
+    try {
+      notifs.value = (await api.get('/notify/list')).data
+      localStorage.setItem('lifeagent_notifs', JSON.stringify(notifs.value))
+    } catch {}
+  }, 10000)
 })
+
+onUnmounted(() => { clearInterval(notifTimer) })
 
 async function delNotif(id){
   await api.delete(`/notify/${id}`)
