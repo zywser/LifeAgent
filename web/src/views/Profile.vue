@@ -68,12 +68,12 @@
           <el-input v-model="nicknameInput" placeholder="给自己起个名字" />
         </el-form-item>
         <el-form-item label="头像">
-          <el-upload :show-file-list="false" :before-upload="beforeAvatar" :http-request="uploadAvatar" accept="image/*">
+          <el-upload :show-file-list="false" :before-upload="beforeAvatar" accept="image/*">
             <div class="avatar-uploader">
               <img v-if="avatarInput" :src="avatarInputSrc" class="avatar-preview" alt="" />
               <div v-else class="avatar-placeholder">点击上传</div>
             </div>
-            <div class="avatar-tip">支持 jpg/png/webp/gif，不超过 5MB</div>
+            <div class="avatar-tip">支持 jpg/png/webp/gif，不超过 5MB，选图后可裁剪</div>
           </el-upload>
         </el-form-item>
         <el-form-item label="头像颜色">
@@ -85,6 +85,18 @@
         <el-button type="primary" @click="saveProfile">保存</el-button>
       </template>
     </el-dialog>
+
+    <!-- 头像裁剪弹窗 -->
+    <el-dialog v-model="cropVisible" title="裁剪头像" width="440px" :close-on-click-modal="false" @opened="initCropper" @closed="destroyCropper">
+      <div class="crop-wrap">
+        <img id="crop-img" :src="cropSrc" alt="" />
+      </div>
+      <p class="crop-tip">拖拽移动选区 · 滚轮或拖动边角调整大小 · 头像将按 1:1 正方形保存</p>
+      <template #footer>
+        <el-button @click="cropVisible = false">取消</el-button>
+        <el-button type="primary" :loading="cropSaving" @click="onCropSave">保存头像</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -93,6 +105,8 @@ import { ref, computed, onMounted } from 'vue'
 import api from '../api/request'
 import { useAuthStore } from '../stores/auth'
 import { useRouter } from 'vue-router'
+import Cropper from 'cropperjs'
+import 'cropperjs/dist/cropper.css'
 
 const auth = useAuthStore(); const router = useRouter()
 const userEmail = ref('')
@@ -150,15 +164,53 @@ function saveProfile(){
 function beforeAvatar(file){
   if (file.size > 5 * 1024 * 1024) { alert('图片不能超过 5MB'); return false }
   if (!['image/jpeg','image/png','image/webp','image/gif'].includes(file.type)) { alert('仅支持 jpg/png/webp/gif'); return false }
-  return true
+  cropFile = file
+  cropSrc.value = URL.createObjectURL(file)
+  cropVisible.value = true
+  return false // 阻止直接上传，先进入裁剪
 }
-async function uploadAvatar({ file }){
-  const fd = new FormData()
-  fd.append('file', file)
+// ===== 头像裁剪 =====
+const cropVisible = ref(false)
+const cropSrc = ref('')
+const cropSaving = ref(false)
+let cropper = null
+let cropFile = null
+function initCropper(){
+  if (!cropSrc.value) return
+  const img = document.getElementById('crop-img')
+  if (!img) return
+  if (cropper) cropper.destroy()
+  cropper = new Cropper(img, {
+    aspectRatio: 1,          // 1:1 正方形，适配圆形头像
+    viewMode: 1,             // 选区不能超出画布
+    dragMode: 'move',
+    autoCropArea: 0.9,
+    background: false,
+    guides: true,
+    center: true,
+    highlight: false,
+    responsive: true
+  })
+}
+function destroyCropper(){
+  if (cropper) { cropper.destroy(); cropper = null }
+  if (cropSrc.value) { URL.revokeObjectURL(cropSrc.value); cropSrc.value = '' }
+  cropFile = null
+}
+async function onCropSave(){
+  if (!cropper || !cropFile) return
+  cropSaving.value = true
   try {
+    const canvas = cropper.getCroppedCanvas({ width: 512, height: 512, imageSmoothingQuality: 'high' })
+    const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.92))
+    const fd = new FormData()
+    fd.append('file', blob, 'avatar-' + Date.now() + '.jpg')
     const { data } = await api.post('/profile/avatar', fd)
     avatarInput.value = data.avatar
+    cropVisible.value = false
+    alert('头像已更新')
   } catch(e) { alert('上传失败：' + (e.response?.data?.detail || e.message)) }
+  finally { cropSaving.value = false }
 }
 async function genImpression(){
   impressing.value = true
@@ -212,6 +264,9 @@ function logout(){ auth.logout(); router.push('/login') }
 .avatar-preview { width: 100%; height: 100%; object-fit: cover; }
 .avatar-placeholder { font-size: 11px; color: var(--primary); text-align: center; line-height: 1.4; }
 .avatar-tip { font-size: 11px; color: var(--text-3); margin-top: 4px; }
+.crop-wrap { max-height: 330px; display: flex; justify-content: center; background: #f3f4f6; border-radius: 8px; overflow: hidden; }
+.crop-wrap img { max-width: 100%; max-height: 330px; display: block; }
+.crop-tip { font-size: 12px; color: var(--text-2); text-align: center; margin: 12px 0 0; }
 
 @media (max-width: 900px) {
   .stat-grid { grid-template-columns: repeat(3, 1fr); }
