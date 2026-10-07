@@ -20,7 +20,7 @@ def _push(db, user_id, title, body):
     # 同步发邮件（失败不影响站内通知）
     try:
         u = db.query(User).filter(User.id == user_id).first()
-        if u and u.email:
+        if u and u.email and u.email_notify:
             send_email(u.email, f"【Life Agent】{title}", render_notify_html(title, body))
     except Exception:
         pass

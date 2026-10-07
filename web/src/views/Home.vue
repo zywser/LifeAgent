@@ -120,6 +120,10 @@
           <div class="nc-head">
             <span class="nc-title">🔔 Agent 提醒</span>
             <span v-if="unreadNotifs" class="mini-dot">{{ unreadNotifs }} 条未读</span>
+            <span class="nc-mail">
+              <span class="nc-mail-label">邮件提醒</span>
+              <el-switch v-model="emailNotify" size="small" @change="saveEmailNotify" />
+            </span>
             <span class="nc-spacer"></span>
             <el-button size="small" text type="primary" @click="openNotifs">查看全部</el-button>
           </div>
@@ -191,6 +195,7 @@ const summarizing = ref(false)
 const syncing = ref(false)
 const notifs = ref([])
 const notifVisible = ref(false)
+const emailNotify = ref(true)
 const unreadNotifs = computed(() => notifs.value.filter(n=>!n.read).length)
 const conversations = ref([])
 const anniv = ref([])
@@ -294,6 +299,7 @@ onMounted(async () => {
       recentExpenses.value = exps.slice(0, 5)
       localStorage.setItem('lifeagent_stats', JSON.stringify({ noteCount: noteCount.value, weekSpent: weekSpent.value, expenseCount: expenseCount.value, recentExpenses: recentExpenses.value }))
     }).catch(()=>{}),
+    api.get('/notify/preferences').then(r => emailNotify.value = !!r.data.email_notify).catch(()=>{}),
     api.get('/notify/list').then(r => {
       notifs.value = r.data
       localStorage.setItem('lifeagent_notifs', JSON.stringify(r.data))
@@ -315,6 +321,9 @@ onMounted(async () => {
 
 onUnmounted(() => { clearInterval(notifTimer) })
 
+async function saveEmailNotify(val) {
+  try { await api.put('/notify/preferences', { email_notify: val }) } catch { emailNotify.value = !val }
+}
 async function delNotif(id){
   await api.delete(`/notify/${id}`)
   notifs.value = notifs.value.filter(n=>n.id!==id)
@@ -445,6 +454,8 @@ async function openNotifs(){
 .nc-title2 { font-size: 13px; font-weight: 600; color: #111827; }
 .nc-text { font-size: 12px; color: #4b5563; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nc-time { font-size: 11px; color: #9ca3af; flex-shrink: 0; }
+.nc-mail { display: flex; align-items: center; gap: 6px; margin-left: 10px; }
+.nc-mail-label { font-size: 12px; color: #6b7280; white-space: nowrap; }
 
 /* 通知弹窗 */
 .notif-full { padding: 12px 0; border-bottom: 1px solid #f0f1f3; }

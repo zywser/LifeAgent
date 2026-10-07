@@ -1,6 +1,7 @@
 import json
 import redis
 from fastapi import APIRouter, Depends
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from ..deps import get_current_user
 from ..db.models import User, Notification
@@ -49,3 +50,18 @@ def del_notify(nid: int, user: User = Depends(get_current_user), db: Session = D
     n = db.query(Notification).filter(Notification.id == nid, Notification.user_id == user.id).first()
     if n: db.delete(n); db.commit(); _invalidate(user.id)
     return {"ok": True}
+
+class PrefIn(BaseModel):
+    email_notify: bool
+
+
+@router.get("/preferences")
+def get_preferences(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    return {"email_notify": bool(user.email_notify)}
+
+
+@router.put("/preferences")
+def update_preferences(payload: PrefIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    user.email_notify = 1 if payload.email_notify else 0
+    db.commit()
+    return {"email_notify": bool(user.email_notify)}

@@ -36,6 +36,10 @@ async def lifespan(app: FastAPI):
                 conn.execute(text("ALTER TABLE todos ADD due_at DATETIME NULL"))
             if "reminded" not in tcols:
                 conn.execute(text("ALTER TABLE todos ADD reminded INT DEFAULT 0"))
+        if "users" in insp.get_table_names():
+            ucols = [c["name"] for c in insp.get_columns("users")]
+            if "email_notify" not in ucols:
+                conn.execute(text("ALTER TABLE users ADD email_notify INT DEFAULT 1"))
     start_scheduler()
     try:
         yield
