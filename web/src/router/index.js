@@ -17,7 +17,7 @@ import Savings from '../views/Savings.vue'
 import Anniversary from '../views/Anniversary.vue'
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory('/life/'),
   routes: [
     { path: '/login', component: Login },
     { path: '/register', component: Register },

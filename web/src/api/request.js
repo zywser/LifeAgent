@@ -23,7 +23,7 @@ function clearAuthAndRedirect() {
   localStorage.removeItem('user')
   if (!window.__logging_out) {
     window.__logging_out = true
-    window.location.href = '/login'
+    window.location.href = '/life/login'
   }
 }
 
