@@ -11,6 +11,9 @@
         <router-link to="/chat" class="nav-item">
           <span class="nav-icon">💬</span><span>对话助手</span>
         </router-link>
+        <router-link to="/profile" class="nav-item">
+          <span class="nav-icon">👤</span><span>个人资料</span>
+        </router-link>
         <div class="nav-group">生活管理</div>
         <router-link to="/accounting" class="nav-item"><span class="nav-icon">💰</span><span>记账</span></router-link>
         <router-link to="/todo" class="nav-item"><span class="nav-icon">✅</span><span>待办</span></router-link>
