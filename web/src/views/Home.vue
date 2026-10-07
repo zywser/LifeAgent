@@ -120,12 +120,12 @@
           <div class="nc-head">
             <span class="nc-title">🔔 Agent 提醒</span>
             <span v-if="unreadNotifs" class="mini-dot">{{ unreadNotifs }} 条未读</span>
-            <span class="nc-mail">
-              <span class="nc-mail-label">邮件提醒</span>
-              <el-switch v-model="emailNotify" size="small" @change="saveEmailNotify" />
-            </span>
             <span class="nc-spacer"></span>
             <el-button size="small" text type="primary" @click="openNotifs">查看全部</el-button>
+          </div>
+          <div class="nc-mail-row">
+            <span class="nc-mail-label">邮件提醒</span>
+            <el-switch v-model="emailNotify" size="small" @change="saveEmailNotify" />
           </div>
           <div v-if="!notifs.length" class="todo-empty">暂无提醒，Agent 会在重要时刻通知你</div>
           <div v-for="n in notifs.slice(0, 2)" :key="n.id" class="nc-item" :class="{ unread: !n.read }" @click="viewNotif(n)">
@@ -454,7 +454,7 @@ async function openNotifs(){
 .nc-title2 { font-size: 13px; font-weight: 600; color: var(--text); }
 .nc-text { font-size: 12px; color: var(--text-2); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nc-time { font-size: 11px; color: var(--text-3); flex-shrink: 0; }
-.nc-mail { display: flex; align-items: center; gap: 6px; margin-left: 10px; }
+.nc-mail-row { display: flex; align-items: center; gap: 6px; padding: 2px 2px 0; }
 .nc-mail-label { font-size: 12px; color: var(--text-2); white-space: nowrap; }
 
 /* 通知弹窗 */
