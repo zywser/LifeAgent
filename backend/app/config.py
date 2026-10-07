@@ -19,6 +19,13 @@ class Settings(BaseSettings):
     tavily_api_key: str = ""
     langsmith_project: str = "Life-Agent"
     backend_cors_origins: str = "http://localhost:5173,http://localhost"
+    smtp_host: str = "smtp.qq.com"
+    smtp_port: int = 465
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""
+    verify_code_ttl: int = 600
+    verify_code_cooldown: int = 60
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @property
