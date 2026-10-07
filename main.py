@@ -19,4 +19,5 @@ from app.main import app  # noqa: E402
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+    # 注意：不要开启 reload=True——venv 下热重载 worker 会用基础解释器（无项目依赖）导致起不来
+    uvicorn.run("main:app", host="127.0.0.1", port=8000)
