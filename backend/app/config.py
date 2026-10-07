@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     smtp_from: str = ""
     verify_code_ttl: int = 600
     verify_code_cooldown: int = 60
+    frontend_base: str = "http://localhost:5174"
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @property

@@ -64,7 +64,6 @@
               </el-dropdown-menu>
             </template>
           </el-dropdown>
-          <el-icon><Setting /></el-icon>
         </div>
       </header>
       <main class="content"><router-view /></main>
@@ -77,7 +76,7 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from './stores/auth'
 import { useRunStore } from './stores/run'
-import { Setting, ArrowLeft, Menu } from '@element-plus/icons-vue'
+import { ArrowLeft, Menu } from '@element-plus/icons-vue'
 import api from './api/request'
 import { listConversations, getConversation, deleteConversation } from './api/conversations'
 const auth = useAuthStore()

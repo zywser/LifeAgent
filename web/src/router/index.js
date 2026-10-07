@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Login from '../views/Login.vue'
 import Register from '../views/Register.vue'
+import ResetPassword from '../views/ResetPassword.vue'
 import Chat from '../views/Chat.vue'
 import NotesManage from '../views/NotesManage.vue'
 import AgentGraph from '../views/AgentGraph.vue'
@@ -21,6 +22,7 @@ const router = createRouter({
   routes: [
     { path: '/login', component: Login },
     { path: '/register', component: Register },
+    { path: '/reset-password', component: ResetPassword },
     { path: '/', redirect: '/home' },
     { path: '/home', component: Home, meta: { auth: true } },
     { path: '/chat', component: Chat, meta: { auth: true } },

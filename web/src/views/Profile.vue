@@ -7,7 +7,7 @@
         <div v-else class="avatar" :style="{background: avatarColor}">{{ nickname.slice(0,1).toUpperCase() }}</div>
         <div class="hero-info">
           <h2>{{ nickname }}</h2>
-          <p>{{ userEmail }}</p>
+          <p>{{ userEmail }} <el-link type="primary" @click="openChangeEmail">更换</el-link></p>
         </div>
         <el-button @click="editVisible = true">编辑资料</el-button>
       </div>
@@ -58,6 +58,14 @@
           <span class="a-icon">🚪</span>
           <div><div class="a-title">退出登录</div><div class="a-desc">当前账号：{{ userEmail }}</div></div>
         </button>
+        <button class="action" @click="openChangeEmail">
+          <span class="a-icon">📧</span>
+          <div><div class="a-title">更换邮箱</div><div class="a-desc">验证后更换登录邮箱</div></div>
+        </button>
+        <button class="action" @click="openChangePwd">
+          <span class="a-icon">🔐</span>
+          <div><div class="a-title">修改密码</div><div class="a-desc">定期更换密码更安全</div></div>
+        </button>
       </div>
     </div>
 
@@ -97,11 +105,46 @@
         <el-button type="primary" :loading="cropSaving" @click="onCropSave">保存头像</el-button>
       </template>
     </el-dialog>
+
+    <!-- 更换邮箱弹窗 -->
+    <el-dialog v-model="changeEmailVisible" title="更换邮箱" width="430px" :close-on-click-modal="false">
+      <template v-if="ceStep === 'old'">
+        <p class="ce-desc">当前邮箱：<b>{{ userEmail }}</b>。先输入发送到当前邮箱的验证码完成身份验证：</p>
+        <div class="code-row">
+          <el-input v-model="oldCode" placeholder="当前邮箱验证码" size="large" style="flex:1" />
+          <el-button :disabled="oldCd > 0" size="large" @click="sendOldCode">{{ oldCd > 0 ? oldCd + 's 后重发' : '发送验证码' }}</el-button>
+        </div>
+        <el-button type="primary" class="block" :loading="verifying" @click="verifyOld" style="margin-top:14px">验证通过，继续</el-button>
+      </template>
+      <template v-else>
+        <p class="ce-desc">身份已验证 ✅ 请输入新邮箱并完成验证：</p>
+        <div class="code-row">
+          <el-input v-model="newEmail" placeholder="新邮箱" size="large" style="flex:1" />
+          <el-button :disabled="newCd > 0 || !newEmail" size="large" @click="sendNewCode">{{ newCd > 0 ? newCd + 's 后重发' : '发送验证码' }}</el-button>
+        </div>
+        <el-input v-model="newCode" placeholder="新邮箱验证码" size="large" style="margin-top:12px" />
+        <el-button type="primary" class="block" :loading="ceSubmitting" @click="submitChangeEmail" style="margin-top:14px">确认更换</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 修改密码弹窗 -->
+    <el-dialog v-model="pwdVisible" title="修改密码" width="400px" :close-on-click-modal="false">
+      <el-form label-width="80px">
+        <el-form-item label="当前密码"><el-input v-model="pwdForm.current" type="password" show-password size="large" placeholder="输入当前密码" /></el-form-item>
+        <el-form-item label="新密码"><el-input v-model="pwdForm.next" type="password" show-password size="large" placeholder="至少 6 位" /></el-form-item>
+        <el-form-item label="确认新密码"><el-input v-model="pwdForm.confirm" type="password" show-password size="large" placeholder="再次输入新密码" /></el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="pwdVisible = false">取消</el-button>
+        <el-button type="primary" :loading="pwdSubmitting" @click="submitPwd">确认修改</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ElMessage } from 'element-plus'
 import api from '../api/request'
 import { useAuthStore } from '../stores/auth'
 import { useRouter } from 'vue-router'
@@ -225,6 +268,69 @@ async function genImpression(){
 }
 
 function logout(){ auth.logout(); router.push('/login') }
+
+// ===== 更换邮箱 =====
+const changeEmailVisible = ref(false)
+const ceStep = ref('old')      // old: 老邮箱验证, new: 新邮箱验证
+const oldCode = ref(''); const oldCd = ref(0)
+const newEmail = ref(''); const newCode = ref(''); const newCd = ref(0)
+const verifying = ref(false); const ceSubmitting = ref(false)
+let ceTimer = null
+function openChangeEmail(){
+  ceStep.value = 'old'; oldCode.value = ''; newEmail.value = ''; newCode.value = ''
+  changeEmailVisible.value = true
+}
+async function sendOldCode(){
+  try { await api.post('/auth/change_email/send_old'); ElMessage.success('验证码已发送到当前邮箱') } catch { return }
+  oldCd.value = 60
+  ceTimer = setInterval(() => { oldCd.value--; if (oldCd.value <= 0) clearInterval(ceTimer) }, 1000)
+}
+async function verifyOld(){
+  if (!oldCode.value) { ElMessage.warning('请输入验证码'); return }
+  verifying.value = true
+  try {
+    await api.post('/auth/change_email/verify_old', { verify_code: oldCode.value })
+    ceStep.value = 'new'; ElMessage.success('验证通过，请输入新邮箱')
+  } catch {}
+  finally { verifying.value = false }
+}
+async function sendNewCode(){
+  if (!newEmail.value) { ElMessage.warning('请先填写新邮箱'); return }
+  try { await api.post('/auth/change_email/send_new', { email: newEmail.value }); ElMessage.success('验证码已发送到新邮箱') } catch { return }
+  newCd.value = 60
+  ceTimer = setInterval(() => { newCd.value--; if (newCd.value <= 0) clearInterval(ceTimer) }, 1000)
+}
+async function submitChangeEmail(){
+  if (!newCode.value) { ElMessage.warning('请输入新邮箱验证码'); return }
+  ceSubmitting.value = true
+  try {
+    const { data } = await api.post('/auth/change_email', { new_email: newEmail.value, verify_code: newCode.value })
+    userEmail.value = data.email
+    localStorage.setItem('user_email', data.email)
+    changeEmailVisible.value = false
+    ElMessage.success('邮箱已更换')
+  } catch {}
+  finally { ceSubmitting.value = false }
+}
+
+// ===== 修改密码 =====
+const pwdVisible = ref(false)
+const pwdForm = reactive({ current: '', next: '', confirm: '' })
+const pwdSubmitting = ref(false)
+function openChangePwd(){ pwdForm.current = ''; pwdForm.next = ''; pwdForm.confirm = ''; pwdVisible.value = true }
+async function submitPwd(){
+  if (!pwdForm.current) { ElMessage.warning('请输入当前密码'); return }
+  if (pwdForm.next.length < 6) { ElMessage.warning('新密码至少 6 位'); return }
+  if (pwdForm.next !== pwdForm.confirm) { ElMessage.warning('两次输入的新密码不一致'); return }
+  pwdSubmitting.value = true
+  try {
+    await api.post('/auth/change_password', { current_password: pwdForm.current, new_password: pwdForm.next })
+    pwdVisible.value = false
+    ElMessage.success('密码已修改')
+  } catch {}
+  finally { pwdSubmitting.value = false }
+}
+onUnmounted(() => { if (ceTimer) clearInterval(ceTimer) })
 </script>
 
 <style scoped>
@@ -270,6 +376,8 @@ function logout(){ auth.logout(); router.push('/login') }
 .crop-wrap { max-height: 330px; display: flex; justify-content: center; background: #f3f4f6; border-radius: 8px; overflow: hidden; }
 .crop-wrap img { max-width: 100%; max-height: 330px; display: block; }
 .crop-tip { font-size: 12px; color: var(--text-2); text-align: center; margin: 12px 0 0; }
+.ce-desc { font-size: 13px; color: var(--text-2); margin: 0 0 14px; line-height: 1.7; }
+.code-row { display: flex; gap: 8px; width: 100%; }
 
 @media (max-width: 900px) {
   .stat-grid { grid-template-columns: repeat(3, 1fr); }

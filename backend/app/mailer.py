@@ -59,6 +59,35 @@ def render_notify_html(title: str, body: str) -> str:
 </html>"""
 
 
+def render_reset_html(link: str) -> str:
+    """重置密码邮件 HTML：蓝白卡片 + 醒目链接按钮。"""
+    return f"""<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;background:#f0f4f8;">
+  <div style="max-width:520px;margin:24px auto;background:#ffffff;border-radius:12px;overflow:hidden;font-family:'Helvetica Neue',Arial,'PingFang SC','Microsoft YaHei',sans-serif;box-shadow:0 4px 20px rgba(0,0,0,.06);">
+    <div style="background:#2563eb;padding:22px 32px;">
+      <div style="color:#ffffff;font-size:18px;font-weight:700;line-height:1.4;">
+        <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#ffffff;vertical-align:middle;margin-right:8px;"></span>
+        Life Agent
+      </div>
+    </div>
+    <div style="padding:32px;">
+      <p style="margin:0 0 6px;font-size:17px;color:#111827;font-weight:700;">重置密码</p>
+      <p style="margin:0 0 24px;font-size:14px;color:#6b7280;line-height:1.6;">您正在找回 Life Agent 账号密码，点击下方按钮进入重置页面（1 小时内有效）：</p>
+      <div style="text-align:center;margin-bottom:24px;">
+        <a href="{link}" style="display:inline-block;background:#2563eb;color:#ffffff;font-size:16px;font-weight:700;padding:13px 40px;border-radius:8px;text-decoration:none;">重置密码</a>
+      </div>
+      <p style="margin:0 0 8px;font-size:12px;color:#9ca3af;line-height:1.6;">如果按钮无法点击，请复制以下链接到浏览器打开：</p>
+      <p style="margin:0;font-size:12px;color:#6b7280;word-break:break-all;line-height:1.6;">{link}</p>
+    </div>
+    <div style="background:#f9fafb;padding:16px 32px;border-top:1px solid #e5e7eb;">
+      <p style="margin:0;font-size:12px;color:#9ca3af;text-align:center;">Life Agent · 个人生活管家多智能体平台</p>
+    </div>
+  </div>
+</body>
+</html>"""
+
+
 def render_verify_html(code: str, ttl_min: int) -> str:
     """验证码邮件 HTML：验证码单独一行、加大加粗。"""
     return f"""<!DOCTYPE html>

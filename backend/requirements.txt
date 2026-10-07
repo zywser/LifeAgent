@@ -26,3 +26,4 @@ APScheduler==3.11.0
 httpx==0.28.1
 
 email-validator==2.2.0
+cryptography==50.0.2
