@@ -87,7 +87,7 @@ const isHome = computed(() => route.path === '/home' || route.path === '/')
 const profile = ref(JSON.parse(localStorage.getItem('lifeagent_profile') || '{}'))
 const avatarSrc = computed(() => profile.value.avatar ? '/api/' + profile.value.avatar : '')
 const theme = ref(localStorage.getItem('lifeagent_theme') || 'light')
-const themeColors = { light: '#2563eb', dark: '#3b82f6', vivid: '#ff5a2f', nature: '#5c7f66' }
+const themeColors = { light: '#2563eb', dark: '#111827', vivid: '#ff5a2f', nature: '#5c7f66' }
 const themeColor = computed(() => themeColors[theme.value] || '#2563eb')
 function setTheme(name) { theme.value = name; document.documentElement.dataset.theme = name; localStorage.setItem('lifeagent_theme', name) }
 const unread = ref(0)
@@ -179,7 +179,7 @@ function logout() { auth.logout(); router.push('/login') }
 
 <style scoped>
 .layout { display: flex; height: 100vh; background: var(--bg); }
-.sidebar { width: 232px; background: var(--card); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px 14px; box-sizing: border-box; }
+.sidebar { width: 232px; background: var(--sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px 14px; box-sizing: border-box; }
 .logo { display: flex; align-items: center; gap: 10px; padding: 4px 10px 24px; }
 .logo-dot { width: 26px; height: 26px; border-radius: 50%; background: var(--primary); }
 .logo-text { font-size: 17px; font-weight: 700; color: var(--text); }
@@ -240,30 +240,51 @@ function logout() { auth.logout(); router.push('/login') }
 <style>
 :root {
   --bg: #f3f5f9; --card: #ffffff; --card-2: #f9fafb;
+  --sidebar: #eef2f8;
   --text: #111827; --text-2: #6b7280; --text-3: #9ca3af;
   --primary: #2563eb; --primary-bg: #eff6ff; --primary-border: #dbeafe;
   --hover: #f3f4f6; --border: #eaecef; --danger: #ef4444;
   --shadow: rgba(0,0,0,.06);
+  /* Element Plus 跟随主题 */
+  --el-color-primary: #2563eb;
+  --el-bg-color: #ffffff; --el-bg-color-overlay: #ffffff; --el-fill-color-blank: #ffffff;
+  --el-text-color-primary: #111827; --el-text-color-regular: #4b5563;
+  --el-border-color: #e5e7eb; --el-border-color-light: #e5e7eb; --el-fill-color-light: #f3f4f6;
 }
 [data-theme="dark"] {
   --bg: #0f172a; --card: #1e293b; --card-2: #263449;
+  --sidebar: #16213a;
   --text: #f1f5f9; --text-2: #94a3b8; --text-3: #64748b;
   --primary: #3b82f6; --primary-bg: #1e3a5f; --primary-border: #1d4ed8;
   --hover: #2c3a52; --border: #334155; --danger: #f87171;
   --shadow: rgba(0,0,0,.3);
+  --el-color-primary: #3b82f6;
+  --el-bg-color: #1e293b; --el-bg-color-overlay: #263449; --el-fill-color-blank: #1e293b;
+  --el-text-color-primary: #f1f5f9; --el-text-color-regular: #cbd5e1;
+  --el-border-color: #334155; --el-border-color-light: #334155; --el-fill-color-light: #2c3a52;
 }
 [data-theme="vivid"] {
   --bg: #fdf2ee; --card: #ffffff; --card-2: #fff3ec;
+  --sidebar: #ffe9e0;
   --text: #26211d; --text-2: #6d625a; --text-3: #a89d94;
   --primary: #ff5a2f; --primary-bg: #ffe9e0; --primary-border: #ffc9b4;
   --hover: #fff0e8; --border: #f2e2d9; --danger: #f43f5e;
   --shadow: rgba(255,90,47,.12);
+  --el-color-primary: #ff5a2f;
+  --el-bg-color: #ffffff; --el-bg-color-overlay: #ffffff; --el-fill-color-blank: #fff3ec;
+  --el-text-color-primary: #26211d; --el-text-color-regular: #6d625a;
+  --el-border-color: #f2e2d9; --el-border-color-light: #f2e2d9; --el-fill-color-light: #fff0e8;
 }
 [data-theme="nature"] {
   --bg: #f1efe6; --card: #fbfaf4; --card-2: #f2efe4;
+  --sidebar: #e9efe4;
   --text: #2f3b31; --text-2: #6b786c; --text-3: #9aa79b;
   --primary: #5c7f66; --primary-bg: #e7efe8; --primary-border: #ccdccf;
   --hover: #efeee2; --border: #e2dfd0; --danger: #c96f4a;
   --shadow: rgba(92,127,102,.1);
+  --el-color-primary: #5c7f66;
+  --el-bg-color: #fbfaf4; --el-bg-color-overlay: #fbfaf4; --el-fill-color-blank: #f2efe4;
+  --el-text-color-primary: #2f3b31; --el-text-color-regular: #5a665c;
+  --el-border-color: #e2dfd0; --el-border-color-light: #e2dfd0; --el-fill-color-light: #efeee2;
 }
 </style>
