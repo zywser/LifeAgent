@@ -9,6 +9,9 @@
 """
 import json
 import re
+
+from zoneinfo import ZoneInfo
+_BJ = ZoneInfo("Asia/Shanghai")
 from langchain_core.messages import HumanMessage, SystemMessage
 from .state import AgentState
 from .tools import TOOLS
@@ -126,7 +129,7 @@ async def executor(state: AgentState) -> dict:
 
     bound_llm = llm.bind_tools(TOOLS)
     from datetime import datetime
-    now = datetime.now().strftime("%Y-%m-%d %H:%M %A")
+    now = datetime.now(_BJ).strftime("%Y-%m-%d %H:%M %A")
     prompt = EXECUTOR_PROMPT.format(
         query=state["query"],
         subtask=current,

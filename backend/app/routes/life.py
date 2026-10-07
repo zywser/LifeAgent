@@ -1,4 +1,7 @@
 from datetime import datetime, date
+
+from zoneinfo import ZoneInfo
+_BJ = ZoneInfo("Asia/Shanghai")
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -91,7 +94,7 @@ def add_habit(body: HabitIn, user: User = Depends(get_current_user), db: Session
 @router.get("/habits")
 def list_habits(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     rows = db.query(Habit).filter(Habit.user_id == user.id).all()
-    today = date.today()
+    today = datetime.now(_BJ).date()
     return [{"id": r.id, "name": r.name, "icon": r.icon or "✨", "remind_time": r.remind_time,
              "checked_count": r.checked_count,
              "checked_today": r.last_check == today,
@@ -107,7 +110,7 @@ def _habit_streak(db: Session, habit_id: int, uid: int) -> int:
     )
     dates = {d[0] for d in logs}
     streak = 0
-    d = date.today()
+    d = datetime.now(_BJ).date()
     if d not in dates:
         d = d - timedelta(days=1)
     while d in dates:
@@ -119,7 +122,7 @@ def _habit_streak(db: Session, habit_id: int, uid: int) -> int:
 def check_habit(hid: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     h = db.query(Habit).filter(Habit.id == hid, Habit.user_id == user.id).first()
     if not h: raise HTTPException(404)
-    today = date.today()
+    today = datetime.now(_BJ).date()
     if h.last_check != today:
         h.last_check = today
         h.checked_count += 1
@@ -194,7 +197,7 @@ class AnnivIn(BaseModel):
 def add_anniv(body: AnnivIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     try:
         month, day = body.event_date.split("-")
-        yr = body.year if body.year else date.today().year
+        yr = body.year if body.year else datetime.now(_BJ).date().year
         ev = date(yr, int(month), int(day))
     except Exception:
         raise HTTPException(400, "event_date 格式应为 MM-DD，如 06-01")
@@ -224,7 +227,7 @@ class DiaryIn(BaseModel):
 @router.post("/diary")
 def add_diary(body: DiaryIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     d = Diary(user_id=user.id, mood=body.mood, content=body.content)
-    today = date.today()
+    today = datetime.now(_BJ).date()
     exps = db.query(Expense).filter(
         Expense.user_id == user.id, Expense.kind != "income",
         Expense.created_at >= datetime.combine(today, datetime.min.time())).all()
@@ -315,7 +318,7 @@ def list_water(user: User = Depends(get_current_user), db: Session = Depends(get
 @router.post("/water")
 def set_water(body: WaterIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     try:
-        d = date.fromisoformat(body.date) if body.date else date.today()
+        d = date.fromisoformat(body.date) if body.date else datetime.now(_BJ).date()
     except Exception:
         raise HTTPException(400, "date 格式应为 YYYY-MM-DD")
     cups = max(0, int(body.cups))

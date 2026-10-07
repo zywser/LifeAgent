@@ -9,6 +9,9 @@
 """
 from typing import Annotated
 from datetime import datetime, date, timedelta
+
+from zoneinfo import ZoneInfo
+_BJ = ZoneInfo("Asia/Shanghai")
 from langchain_core.tools import tool, InjectedToolArg
 from tavily import TavilyClient
 
@@ -113,7 +116,7 @@ def _habit_streak(db, habit_id: int, uid: int) -> int:
         HabitLog.habit_id == habit_id, HabitLog.user_id == uid).all()
     dates = {d[0] for d in logs}
     streak = 0
-    d = date.today()
+    d = datetime.now(_BJ).date()
     if d not in dates:
         d = d - timedelta(days=1)
     while d in dates:
@@ -137,7 +140,7 @@ def check_habit(
             h = Habit(user_id=uid, name=habit_name, icon="✨", remind_time="09:00")
             db.add(h); db.commit(); db.refresh(h)
             created = True
-        today = date.today()
+        today = datetime.now(_BJ).date()
         if h.last_check != today:
             h.last_check = today
             h.checked_count += 1
@@ -162,7 +165,7 @@ def query_habits(
         rows = db.query(Habit).filter(Habit.user_id == uid).all()
         if not rows:
             return "还没有习惯，可以直接说「帮我打卡跑步」来创建并打卡。"
-        today = date.today()
+        today = datetime.now(_BJ).date()
         lines = []
         for r in rows:
             streak = _habit_streak(db, r.id, uid)
@@ -185,7 +188,7 @@ def add_anniversary(
     db = SessionLocal()
     try:
         month, day = event_date.split("-")
-        ev = date(date.today().year, int(month), int(day))
+        ev = date(datetime.now(_BJ).date().year, int(month), int(day))
     except Exception:
         return "日期格式不对，请用 MM-DD 格式（如 06-01）再说一次。"
     try:
@@ -213,7 +216,7 @@ def query_anniversary(
         rows = db.query(Anniversary).filter(Anniversary.user_id == uid).all()
         if not rows:
             return "还没有纪念日，可以直接说「记住6月1号是妈的生日」来添加。"
-        today = date.today()
+        today = datetime.now(_BJ).date()
         lines = []
         for r in rows:
             target = date(today.year, r.event_date.month, r.event_date.day)
@@ -237,7 +240,7 @@ def record_water(
     cups 为今天已喝的总杯数（覆盖式记录）。"""
     db = SessionLocal()
     try:
-        today = date.today()
+        today = datetime.now(_BJ).date()
         row = db.query(WaterLog).filter(
             WaterLog.user_id == uid, WaterLog.log_date == today).first()
         if row:
@@ -261,7 +264,7 @@ def query_water(
         rows = db.query(WaterLog).filter(WaterLog.user_id == uid).all()
         if not rows:
             return "还没有喝水记录，喝一杯后可以说「帮我记录喝水」或到喝水页面点一下。"
-        today = date.today()
+        today = datetime.now(_BJ).date()
         today_cups = next((r.cups for r in rows if r.log_date == today), 0)
         recent = []
         for i in range(6, -1, -1):
@@ -287,7 +290,7 @@ def query_savings(
         lines = []
         for r in rows:
             left = max(0, r.target_amount - r.saved_amount)
-            days = (r.deadline - date.today()).days
+            days = (r.deadline - datetime.now(_BJ).date()).days
             daily = left / days if days > 0 else left
             lines.append(
                 f"「{r.purpose}」已存¥{r.saved_amount:.0f}/¥{r.target_amount:.0f}，"

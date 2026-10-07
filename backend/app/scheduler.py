@@ -1,4 +1,5 @@
 from datetime import datetime, date, timedelta
+from zoneinfo import ZoneInfo
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 import redis
@@ -10,7 +11,15 @@ from .config import settings
 from .mailer import send_email, render_notify_html
 from langchain_core.messages import HumanMessage, SystemMessage
 
-scheduler = AsyncIOScheduler()
+# 所有定时任务按北京时间触发（服务器/Docker 容器默认 UTC，必须显式指定）
+TZ = ZoneInfo("Asia/Shanghai")
+scheduler = AsyncIOScheduler(timezone=TZ)
+
+def now_bj():
+    return datetime.now(TZ)
+
+def today_bj():
+    return now_bj().date()
 _r = redis.from_url(settings.redis_url, decode_responses=True)
 
 
@@ -55,7 +64,7 @@ def noon_job():
     db: Session = SessionLocal()
     try:
         for u in db.query(User).all():
-            body = _llm("现在是中午12点，写一句午间问候，提醒用户记得吃午饭、下午注意休息。")
+            body = _llm(f"现在是北京时间 {now_bj().strftime('%H:%M')}，写一句午间问候，提醒用户记得吃午饭、下午注意休息。")
             _push(db, u.id, "午间问候", body or "中午啦，记得吃顿好的，下午继续加油！")
         db.commit()
     finally:
@@ -66,7 +75,7 @@ def evening_job():
     db: Session = SessionLocal()
     try:
         for u in db.query(User).all():
-            today = date.today()
+            today = today_bj()
             spent_today = sum(e.amount for e in db.query(Expense).filter(
                 Expense.user_id == u.id, Expense.kind != "income",
                 Expense.created_at >= datetime.combine(today, datetime.min.time())).all())
@@ -80,7 +89,7 @@ def evening_job():
 def sleep_job():
     db: Session = SessionLocal()
     try:
-        today = date.today()
+        today = today_bj()
         for u in db.query(User).all():
             # 今天的日记
             diaries = db.query(Diary).filter(
@@ -93,7 +102,7 @@ def sleep_job():
                 Expense.created_at >= datetime.combine(today, datetime.min.time())).all())
             undone = db.query(Todo).filter(Todo.user_id == u.id, Todo.done == 0).count()
             body = _llm(
-                f"现在是晚上11点。用户今天日记：{diary_text[:200]}；今天支出 ¥{spent:.2f}；未完成待办 {undone} 条。"
+                f"现在是北京时间 {now_bj().strftime('%H:%M')}。用户今天日记：{diary_text[:200]}；今天支出 ¥{spent:.2f}；未完成待办 {undone} 条。"
                 "写一段晚安小结，回顾今天并提醒早睡，不超过120字。",
                 system="你是暖心生活管家。"
             )
@@ -107,7 +116,7 @@ def check_due_todos():
     """每5分钟检查：到点的待办提醒"""
     db: Session = SessionLocal()
     try:
-        now = datetime.now()
+        now = now_bj()
         due = db.query(Todo).filter(
             Todo.done == 0, Todo.reminded == 0,
             Todo.due_at != None, Todo.due_at <= now
@@ -126,7 +135,7 @@ def check_habits():
     """每小时检查习惯打卡提醒"""
     db: Session = SessionLocal()
     try:
-        now = datetime.now()
+        now = now_bj()
         hhmm = now.strftime("%H:%M")
         today = now.date()
         habits = db.query(Habit).filter(Habit.remind_time == hhmm).all()
@@ -145,7 +154,7 @@ def check_anniversaries():
     """每天早上检查纪念日倒计时"""
     db: Session = SessionLocal()
     try:
-        today = date.today()
+        today = today_bj()
         for a in db.query(Anniversary).all():
             yr = today.year
             this_year = date(yr, a.event_date.month, a.event_date.day)
@@ -177,7 +186,7 @@ def check_savings():
     """每天早上检查存钱进度"""
     db: Session = SessionLocal()
     try:
-        today = date.today()
+        today = today_bj()
         for g in db.query(SavingsGoal).all():
             days_left = (g.deadline - today).days
             if days_left <= 0:
