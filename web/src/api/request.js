@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 
-const api = axios.create({ baseURL: '/api' })
+const api = axios.create({ baseURL: '/life/api' })
 
 // 防止多个并发请求同时触发 refresh
 let isRefreshing = false
@@ -59,7 +59,7 @@ api.interceptors.response.use(
 
       try {
         // 注意：这里用裸 axios，不走 api 拦截器，避免 refresh 请求自己也触发 401 处理
-        const { data } = await axios.post('/api/auth/refresh', { refresh_token: rt })
+        const { data } = await axios.post('/life/api/auth/refresh', { refresh_token: rt })
         localStorage.setItem('access_token', data.access_token)
         localStorage.setItem('refresh_token', data.refresh_token)
         processQueue(null, data.access_token)

@@ -166,7 +166,7 @@ const nicknameInput = ref('')
 const avatarColorInput = ref('#2563eb')
 const avatar = ref('')
 const avatarInput = ref('')
-const avatarSrc = computed(() => avatar.value ? '/api/' + avatar.value : '')
+const avatarSrc = computed(() => avatar.value ? '/life/api/' + avatar.value : '')
 const avatarInputSrc = computed(() => avatarInput.value ? '/api/' + avatarInput.value : '')
 
 onMounted(async () => {

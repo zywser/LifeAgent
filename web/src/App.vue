@@ -85,7 +85,7 @@ const run = useRunStore()
 const route = useRoute()
 const isHome = computed(() => route.path === '/home' || route.path === '/')
 const profile = ref(JSON.parse(localStorage.getItem('lifeagent_profile') || '{}'))
-const avatarSrc = computed(() => profile.value.avatar ? '/api/' + profile.value.avatar : '')
+const avatarSrc = computed(() => profile.value.avatar ? '/life/api/' + profile.value.avatar : '')
 const theme = ref(localStorage.getItem('lifeagent_theme') || 'light')
 const themeColors = { light: '#2563eb', dark: '#111827', vivid: '#ff5a2f', nature: '#5c7f66' }
 const themeColor = computed(() => themeColors[theme.value] || '#2563eb')
