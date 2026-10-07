@@ -13,7 +13,10 @@ router = APIRouter(prefix="/notes", tags=["notes"])
 async def upload_note(file: UploadFile = File(...), user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if not file.filename or file.filename.lower().split(".")[-1] not in {"md", "txt", "pdf", "docx"}:
         raise HTTPException(400, "unsupported file type")
-    content = load_text(file.filename, await file.read())
+    data = await file.read()
+    if len(data) > 10 * 1024 * 1024:
+        raise HTTPException(400, "文件不能超过 10MB")
+    content = load_text(file.filename, data)
     doc_id = f"u{user.id}_{uuid.uuid4().hex}"
     chunks = split_text(content)
     # 用可预测的 keys：每个 chunk 的 key 为 {doc_id}_c{i}，
