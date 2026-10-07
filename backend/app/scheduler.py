@@ -7,6 +7,7 @@ from .db.session import SessionLocal
 from .db.models import User, Expense, Todo, Habit, SavingsGoal, Anniversary, Notification, Diary
 from .llm import llm
 from .config import settings
+from .mailer import send_email, render_notify_html
 from langchain_core.messages import HumanMessage, SystemMessage
 
 scheduler = AsyncIOScheduler()
@@ -16,6 +17,13 @@ _r = redis.from_url(settings.redis_url, decode_responses=True)
 def _push(db, user_id, title, body):
     db.add(Notification(user_id=user_id, title=title, body=body))
     _r.delete(f"notify:{user_id}")
+    # 同步发邮件（失败不影响站内通知）
+    try:
+        u = db.query(User).filter(User.id == user_id).first()
+        if u and u.email:
+            send_email(u.email, f"【Life Agent】{title}", render_notify_html(title, body))
+    except Exception:
+        pass
 
 
 def _llm(prompt, system="你是贴心的生活管家，回答简洁温暖，不超过100字。"):
