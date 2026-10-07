@@ -158,7 +158,7 @@
       <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
         <el-button size="small" @click="readAll">全部已读</el-button>
       </div>
-      <div v-if="!notifs.length" style="text-align:center;color:#9ca3af;padding:30px">暂无提醒</div>
+      <div v-if="!notifs.length" style="text-align:center;color: var(--text-3);padding:30px">暂无提醒</div>
       <div v-for="n in notifs" :key="n.id" class="notif-full" @click="markRead(n)" style="cursor:pointer">
         <div class="nf-head">
           <span class="nf-title">{{ n.title }}<span v-if="!n.read" class="mini-dot">新</span></span>
@@ -360,7 +360,7 @@ async function openNotifs(){
 
 /* 头部（紧凑一行） */
 .home-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-shrink: 0; }
-.page-title { font-size: 22px; font-weight: 700; color: #111827; margin: 0; }
+.page-title { font-size: 22px; font-weight: 700; color: var(--text); margin: 0; }
 .head-actions { display: flex; gap: 8px; }
 
 .summary-result {
@@ -386,7 +386,7 @@ async function openNotifs(){
 .tc-count { font-size: 11px; color: var(--text-2); background: var(--hover); padding: 2px 10px; border-radius: 10px; }
 .tc-empty { color: var(--text-3); font-size: 13px; text-align: center; padding: 10px 0; }
 .tc-item { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 8px; cursor: pointer; transition: all .15s; }
-.tc-item:hover { background: #f9fafb; }
+.tc-item:hover { background: var(--hover); }
 .tc-item.urgent { background: #fef2f2; }
 .tc-item.urgent:hover { background: #fee2e2; }
 .tc-icon { font-size: 16px; flex-shrink: 0; }

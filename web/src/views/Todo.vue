@@ -64,16 +64,16 @@ onMounted(load)
 .page { max-width: 800px; margin: 0 auto; width: 100%; }
 .head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 16px; }
 .head h2 { margin: 0; font-size: 20px; }
-.sub { color: #6b7280; font-size: 13px; }
-.form-card { display: flex; gap: 10px; background: #fff; padding: 16px; border-radius: 12px; margin-bottom: 16px; }
-.list { background: #fff; border-radius: 12px; padding: 8px 16px; }
-.empty { text-align: center; color: #9ca3af; padding: 40px; }
+.sub { color: var(--text-2); font-size: 13px; }
+.form-card { display: flex; gap: 10px; background: var(--card); padding: 16px; border-radius: 12px; margin-bottom: 16px; }
+.list { background: var(--card); border-radius: 12px; padding: 8px 16px; }
+.empty { text-align: center; color: var(--text-3); padding: 40px; }
 .row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid #f3f4f6; font-size: 14px; }
 .row:last-child { border: none; }
 .row.overdue { background: #fef2f2; border-radius: 8px; padding-left: 10px; padding-right: 10px; }
 .txt { flex: 1; }
-.row.done .txt { text-decoration: line-through; color: #9ca3af; }
+.row.done .txt { text-decoration: line-through; color: var(--text-3); }
 .due { color: #f59e0b; font-size: 12px; }
 .due.overdue { color: #dc2626; font-weight: 600; }
-.time { color: #9ca3af; font-size: 12px; }
+.time { color: var(--text-3); font-size: 12px; }
 </style>

@@ -74,16 +74,16 @@ onMounted(load)
 <style scoped>
 .page { max-width: 600px; margin: 0 auto; width: 100%; text-align: center; }
 h2 { font-size: 20px; }
-.hint { color: #6b7280; margin-bottom: 24px; }
+.hint { color: var(--text-2); margin-bottom: 24px; }
 .cups { display: flex; justify-content: center; gap: 10px; margin-bottom: 24px; flex-wrap: wrap; }
 .cup { font-size: 34px; opacity: .25; cursor: pointer; transition: all .15s; }
 .cup.full { opacity: 1; transform: scale(1.1); }
-.week-card { background: #fff; border-radius: 12px; padding: 20px; margin-top: 28px; text-align: left; }
-.week-card h3 { margin: 0 0 18px; font-size: 15px; color: #111827; }
+.week-card { background: var(--card); border-radius: 12px; padding: 20px; margin-top: 28px; text-align: left; }
+.week-card h3 { margin: 0 0 18px; font-size: 15px; color: var(--text); }
 .week { display: flex; align-items: flex-end; gap: 14px; height: 140px; }
 .wk-day { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; }
 .wk-bar-wrap { flex: 1; width: 100%; display: flex; align-items: flex-end; justify-content: center; }
 .wk-bar { width: 60%; min-height: 2px; background: linear-gradient(180deg, #60a5fa, #2563eb); border-radius: 4px 4px 0 0; transition: height .3s; }
-.wk-num { font-size: 12px; color: #374151; font-weight: 600; }
-.wk-label { font-size: 11px; color: #9ca3af; }
+.wk-num { font-size: 12px; color: var(--text); font-weight: 600; }
+.wk-label { font-size: 11px; color: var(--text-3); }
 </style>

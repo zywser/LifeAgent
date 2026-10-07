@@ -88,29 +88,29 @@ async function remove(id) {
 <style scoped>
 .history-page { max-width: 1100px; margin: 0 auto; width: 100%; }
 .page-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 20px; }
-.page-head h2 { margin: 0; font-size: 20px; color: #111827; }
-.sub { color: #9ca3af; font-size: 13px; }
-.empty { text-align: center; padding: 80px 0; color: #6b7280; }
+.page-head h2 { margin: 0; font-size: 20px; color: var(--text); }
+.sub { color: var(--text-3); font-size: 13px; }
+.empty { text-align: center; padding: 80px 0; color: var(--text-2); }
 .empty-icon { font-size: 48px; margin-bottom: 12px; }
-.empty h3 { margin: 8px 0; color: #111827; }
+.empty h3 { margin: 8px 0; color: var(--text); }
 .empty p { font-size: 13px; margin-bottom: 16px; }
 
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
 .card {
-  background: #fff; border-radius: 12px; padding: 16px;
-  cursor: pointer; transition: all .15s; border: 1px solid #eef0f3;
+  background: var(--card); border-radius: 12px; padding: 16px;
+  cursor: pointer; transition: all .15s; border: 1px solid var(--border);
 }
-.card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.06); transform: translateY(-2px); border-color: #dbeafe; }
+.card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.06); transform: translateY(-2px); border-color: var(--primary-border); }
 .card.new { border-color: #f59e0b; background: #fffbeb; }
 .new-dot { background: #ef4444; color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 8px; margin-left: 6px; }
 .card-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .card-title {
-  font-size: 14px; font-weight: 600; color: #111827;
+  font-size: 14px; font-weight: 600; color: var(--text);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .card-preview {
-  font-size: 13px; color: #6b7280; margin: 10px 0; line-height: 1.5;
+  font-size: 13px; color: var(--text-2); margin: 10px 0; line-height: 1.5;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
-.card-meta { display: flex; justify-content: space-between; font-size: 12px; color: #9ca3af; }
+.card-meta { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-3); }
 </style>

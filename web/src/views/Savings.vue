@@ -65,12 +65,12 @@ onMounted(load)
 .head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .head h2 { margin: 0; font-size: 20px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
-.card { background: #fff; padding: 20px; border-radius: 12px; border: 1px solid #eef0f3; }
+.card { background: var(--card); padding: 20px; border-radius: 12px; border: 1px solid var(--border); }
 .goal-name { font-size: 16px; font-weight: 600; margin-bottom: 12px; }
-.bar { height: 10px; background: #f3f4f6; border-radius: 5px; overflow: hidden; margin-bottom: 10px; }
+.bar { height: 10px; background: var(--hover); border-radius: 5px; overflow: hidden; margin-bottom: 10px; }
 .fill { height: 100%; background: #10b981; transition: width .3s; }
-.nums { color: #6b7280; font-size: 13px; }
+.nums { color: var(--text-2); font-size: 13px; }
 .pct { font-size: 14px; font-weight: 600; color: #10b981; margin: 6px 0 12px; }
 .actions { display: flex; gap: 8px; align-items: center; }
-.empty { grid-column: 1/-1; text-align: center; color: #9ca3af; padding: 40px; background: #fff; border-radius: 12px; }
+.empty { grid-column: 1/-1; text-align: center; color: var(--text-3); padding: 40px; background: var(--card); border-radius: 12px; }
 </style>

@@ -375,7 +375,7 @@ onUnmounted(() => { if (ceTimer) clearInterval(ceTimer) })
 .avatar-preview { width: 100%; height: 100%; object-fit: cover; }
 .avatar-placeholder { font-size: 11px; color: var(--primary); text-align: center; line-height: 1.4; }
 .avatar-tip { font-size: 11px; color: var(--text-3); margin-top: 4px; }
-.crop-wrap { max-height: 330px; display: flex; justify-content: center; background: #f3f4f6; border-radius: 8px; overflow: hidden; }
+.crop-wrap { max-height: 330px; display: flex; justify-content: center; background: var(--hover); border-radius: 8px; overflow: hidden; }
 .crop-wrap img { max-width: 100%; max-height: 330px; display: block; }
 .crop-tip { font-size: 12px; color: var(--text-2); text-align: center; margin: 12px 0 0; }
 .ce-desc { font-size: 13px; color: var(--text-2); margin: 0 0 14px; line-height: 1.7; }

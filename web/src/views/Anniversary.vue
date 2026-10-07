@@ -53,13 +53,13 @@ onMounted(load)
 <style scoped>
 .page { max-width: 700px; margin: 0 auto; width: 100%; }
 h2 { font-size: 20px; margin: 0 0 8px; }
-.hint { color: #6b7280; font-size: 13px; margin-bottom: 16px; }
-.form-card { display: flex; gap: 10px; background: #fff; padding: 16px; border-radius: 12px; margin-bottom: 16px; }
+.hint { color: var(--text-2); font-size: 13px; margin-bottom: 16px; }
+.form-card { display: flex; gap: 10px; background: var(--card); padding: 16px; border-radius: 12px; margin-bottom: 16px; }
 .list { display: flex; flex-direction: column; gap: 10px; }
-.empty { text-align: center; color: #9ca3af; padding: 40px; background: #fff; border-radius: 12px; }
-.item { background: #fff; border-radius: 12px; padding: 16px 20px; display: flex; align-items: center; gap: 16px; }
+.empty { text-align: center; color: var(--text-3); padding: 40px; background: var(--card); border-radius: 12px; }
+.item { background: var(--card); border-radius: 12px; padding: 16px 20px; display: flex; align-items: center; gap: 16px; }
 .a-name { font-size: 14px; font-weight: 600; }
-.a-date { font-size: 12px; color: #9ca3af; margin-top: 2px; }
-.a-count { margin-left: auto; font-size: 13px; color: #6b7280; }
+.a-date { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+.a-count { margin-left: auto; font-size: 13px; color: var(--text-2); }
 .a-count .n { font-size: 20px; font-weight: 700; color: #f59e0b; }
 </style>

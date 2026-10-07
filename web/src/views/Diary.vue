@@ -89,8 +89,8 @@ onMounted(load)
 <style scoped>
 .page { max-width: 700px; margin: 0 auto; width: 100%; }
 h2 { font-size: 20px; margin: 0 0 8px; }
-.hint { color: #6b7280; font-size: 13px; margin-bottom: 16px; }
-.card { background: #fff; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+.hint { color: var(--text-2); font-size: 13px; margin-bottom: 16px; }
+.card { background: var(--card); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
 .btn-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
 .moods { display: flex; gap: 12px; margin-bottom: 12px; }
 .mood { font-size: 28px; cursor: pointer; opacity: .4; transition: all .15s; }
@@ -99,12 +99,12 @@ h2 { font-size: 20px; margin: 0 0 8px; }
 .trend h3 { margin: 0 0 6px; font-size: 14px; color: #9a3412; }
 .trend p { margin: 0; font-size: 13px; color: #7c2d12; line-height: 1.6; }
 .list { display: flex; flex-direction: column; gap: 12px; }
-.empty { text-align: center; color: #9ca3af; padding: 40px; background: #fff; border-radius: 12px; }
-.entry { background: #fff; border-radius: 12px; padding: 16px; }
+.empty { text-align: center; color: var(--text-3); padding: 40px; background: var(--card); border-radius: 12px; }
+.entry { background: var(--card); border-radius: 12px; padding: 16px; }
 .e-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
 .e-mood { font-size: 20px; }
-.e-date { font-size: 12px; color: #9ca3af; flex: 1; }
+.e-date { font-size: 12px; color: var(--text-3); flex: 1; }
 .e-ops { display: flex; gap: 2px; }
-.e-text { font-size: 14px; color: #1f2937; line-height: 1.6; }
+.e-text { font-size: 14px; color: var(--text); line-height: 1.6; }
 .e-summary { margin-top: 10px; padding: 10px 12px; background: #f0f9ff; border-radius: 8px; font-size: 13px; color: #0369a1; line-height: 1.6; }
 </style>

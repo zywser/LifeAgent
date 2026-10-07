@@ -79,14 +79,14 @@ onMounted(load)
 .head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .head h2 { margin: 0; font-size: 20px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
-.card { background: #fff; border-radius: 12px; padding: 22px; text-align: center; border: 1px solid #eef0f3; }
+.card { background: var(--card); border-radius: 12px; padding: 22px; text-align: center; border: 1px solid var(--border); }
 .card.done { border-color: #10b981; background: #f0fdf4; }
 .h-icon { font-size: 36px; }
 .h-name { font-size: 14px; font-weight: 600; margin: 8px 0 4px; }
 .h-streak { font-size: 12px; color: #f59e0b; margin-bottom: 12px; }
 .done-tag { color: #10b981; font-size: 13px; }
-.empty { grid-column: 1/-1; text-align: center; color: #9ca3af; padding: 40px; background: #fff; border-radius: 12px; }
+.empty { grid-column: 1/-1; text-align: center; color: var(--text-3); padding: 40px; background: var(--card); border-radius: 12px; }
 .icon-picker { display: flex; flex-wrap: wrap; gap: 6px; }
-.ic { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 8px; font-size: 18px; cursor: pointer; border: 1px solid #e5e7eb; }
-.ic.sel { border-color: #2563eb; background: #eff6ff; }
+.ic { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 8px; font-size: 18px; cursor: pointer; border: 1px solid var(--border); }
+.ic.sel { border-color: #2563eb; background: var(--primary-bg); }
 </style>
