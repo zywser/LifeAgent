@@ -83,7 +83,7 @@
         </div>
       </div>
 
-      <!-- 右列：今日概况 + 最近记录 + Agent 提醒 -->
+      <!-- 右列：今日概况 + Agent 提醒 + 最近记录 -->
       <div class="dash-right">
         <div class="card overview">
           <h3>今日概况</h3>
@@ -111,6 +111,20 @@
             <div class="ov-cell clickable" @click="openNotifs">
               <span class="ov-label">未读提醒 <span v-if="unreadNotifs" class="mini-dot">{{ unreadNotifs }}</span></span>
               <span class="ov-value">{{ unreadNotifs ? '查看' : '无' }}</span>
+            </div>
+          </div>
+          <!-- 最近待办：展示最近 3 条具体待办（与后端实时同步） -->
+          <div class="ov-todos">
+            <div class="ov-todo-head">
+              <span>最近待办</span>
+              <el-button size="small" text type="primary" @click="$router.push('/todo')">去待办</el-button>
+            </div>
+            <div v-if="!todos.length" class="ov-todo-empty">暂无待办，去添加一件吧</div>
+            <div v-for="t in recentTodos" :key="t.id" class="ov-todo-item" :class="{ done: t.done }" @click="$router.push('/todo')">
+              <span class="ov-todo-txt">{{ t.text }}</span>
+              <span v-if="t.due_at" class="ov-todo-due" :class="{ overdue: isTodoOverdue(t) }">
+                {{ formatShort(t.due_at) }}<span v-if="isTodoOverdue(t)">（已逾期）</span>
+              </span>
             </div>
           </div>
         </div>
@@ -159,7 +173,7 @@
         <el-button size="small" @click="readAll">全部已读</el-button>
       </div>
       <div v-if="!notifs.length" style="text-align:center;color: var(--text-3);padding:30px">暂无提醒</div>
-      <div v-for="n in notifs" :key="n.id" class="notif-full" @click="markRead(n)" style="cursor:pointer">
+      <div v-for="n in pagedNotifs" :key="n.id" class="notif-full" @click="markRead(n)" style="cursor:pointer">
         <div class="nf-head">
           <span class="nf-title">{{ n.title }}<span v-if="!n.read" class="mini-dot">新</span></span>
           <span class="nf-time">{{ formatDateTime(n.time) }}</span>
@@ -167,6 +181,9 @@
         <div class="nf-body">{{ n.body }}</div>
         <el-button size="small" text type="danger" @click.stop="delNotif(n.id)">删除</el-button>
       </div>
+      <el-pagination v-if="notifs.length > notifPageSize" :total="notifs.length" :page-size="notifPageSize"
+        :current-page="notifPage" layout="prev, pager, next" small
+        style="justify-content:center;margin-top:12px" @current-change="p => notifPage = p" />
     </el-dialog>
   </div>
 </template>
@@ -197,6 +214,13 @@ const notifs = ref([])
 const notifVisible = ref(false)
 const emailNotify = ref(true)
 const unreadNotifs = computed(() => notifs.value.filter(n=>!n.read).length)
+// 提醒模态框分页：5 条/页
+const notifPage = ref(1)
+const notifPageSize = 5
+const pagedNotifs = computed(() => notifs.value.slice((notifPage.value - 1) * notifPageSize, notifPage.value * notifPageSize))
+// 最近待办（今日概况内展示最近 3 条）
+const recentTodos = computed(() => todos.value.slice(0, 3))
+function isTodoOverdue(t) { return !t.done && !!t.due_at && new Date(t.due_at) < new Date() }
 const conversations = ref([])
 const anniv = ref([])
 const habits = ref([])
@@ -260,7 +284,7 @@ function openChat(c){
   // 每个历史会话独立路由（豆包/DeepSeek 式）；无数字 id 的本地占位走 /chat
   router.push(c.id && /^\d+$/.test(String(c.id)) ? `/chat/s/${c.id}` : '/chat')
 }
-function toggleTodo(i){ todos.value[i].done = !todos.value[i].done; localStorage.setItem('lifeagent_todos', JSON.stringify(todos.value)) }
+async function toggleTodo(t){ await api.put(`/life/todos/${t.id}`); t.done = !t.done; localStorage.setItem('lifeagent_todos', JSON.stringify(todos.value)) }
 
 async function doSync(){
   syncing.value = true
@@ -309,9 +333,14 @@ onMounted(async () => {
       const weekStart = new Date(); weekStart.setHours(0, 0, 0, 0); weekStart.setDate(weekStart.getDate() - (weekStart.getDay() || 7) + 1)
       weekSpent.value = exps.filter(e => e.kind !== 'income' && new Date(e.time) >= weekStart).reduce((s, r) => s + Number(r.amount), 0).toFixed(2)
       expenseCount.value = exps.length
-      // 最近 5 条：支出和收入都显示
+      // 最近记录：只保留最近 5 条（用户要求卡片紧凑）
       recentExpenses.value = exps.slice(0, 5)
       localStorage.setItem('lifeagent_stats', JSON.stringify({ noteCount: noteCount.value, weekSpent: weekSpent.value, expenseCount: expenseCount.value, recentExpenses: recentExpenses.value }))
+    }).catch(()=>{}),
+    api.get('/life/todos').then(r => {
+      // 待办以后端为准实时同步（与 Todo.vue 同一数据源），覆盖本地旧缓存
+      todos.value = r.data
+      localStorage.setItem('lifeagent_todos', JSON.stringify(r.data))
     }).catch(()=>{}),
     api.get('/notify/preferences').then(r => emailNotify.value = !!r.data.email_notify).catch(()=>{}),
     api.get('/notify/list').then(r => {
@@ -344,7 +373,6 @@ async function delNotif(id){
   localStorage.setItem('lifeagent_notifs', JSON.stringify(notifs.value))
 }
 async function markRead(n){
-  if(n.read) return
   await api.post(`/notify/read/${n.id}`)
   n.read = 1
   localStorage.setItem('lifeagent_notifs', JSON.stringify(notifs.value))
@@ -362,6 +390,7 @@ function viewNotif(n){
 }
 async function openNotifs(){
   notifVisible.value = true
+  notifPage.value = 1
   try {
     notifs.value = (await api.get('/notify/list')).data
     localStorage.setItem('lifeagent_notifs', JSON.stringify(notifs.value))
@@ -388,7 +417,7 @@ async function openNotifs(){
 /* 主面板：一屏内铺满 */
 .dashboard { flex: 1; display: grid; grid-template-columns: 1fr 320px; gap: 14px; min-height: 0; }
 .dash-left { display: flex; flex-direction: column; gap: 12px; min-height: 0; min-width: 0; }
-.dash-right { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.dash-right { display: flex; flex-direction: column; gap: 12px; min-height: 0; overflow-y: auto; }
 
 /* 今日行动（紧凑） */
 .today-card {
@@ -440,11 +469,21 @@ async function openNotifs(){
 .ov-label { font-size: 11px; color: var(--text-2); }
 .ov-value { font-size: 17px; font-weight: 700; color: var(--text); }
 .mini-dot { background: var(--danger); color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 8px; margin-left: 4px; }
+/* 今日概况：最近待办（最近 3 条具体事项） */
+.ov-todos { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px; }
+.ov-todo-head { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--text-2); margin-bottom: 6px; }
+.ov-todo-empty { font-size: 12px; color: var(--text-3); text-align: center; padding: 10px 0; }
+.ov-todo-item { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 8px; background: var(--card-2); margin-bottom: 5px; cursor: pointer; font-size: 12px; }
+.ov-todo-item:hover { background: var(--primary-bg); }
+.ov-todo-item.done .ov-todo-txt { text-decoration: line-through; color: var(--text-3); }
+.ov-todo-txt { flex: 1; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.ov-todo-due { font-size: 11px; color: var(--text-3); flex-shrink: 0; }
+.ov-todo-due.overdue { color: var(--danger); }
 
-.recent-card { padding: 14px 16px; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.recent-card { padding: 12px 14px; flex-shrink: 0; display: flex; flex-direction: column; }
 .rc-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 .rc-head h3 { margin: 0; font-size: 14px; color: var(--text); }
-.recent-row { display: flex; align-items: center; gap: 8px; padding: 11px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.recent-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
 .recent-row:last-child { border: none; }
 .r-cat { width: 52px; text-align: center; background: var(--primary-bg); color: var(--primary); padding: 1px 0; border-radius: 8px; font-size: 11px; flex-shrink: 0; }
 .r-cat.income { background: rgba(16,185,129,.12); color: #059669; }

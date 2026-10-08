@@ -113,7 +113,7 @@ def sleep_job():
 
 
 def check_due_todos():
-    """每5分钟检查：到点的待办提醒"""
+    """每1分钟检查：到点的待办提醒（原 5 分钟间隔，用户反馈 00:08 的待办 00:09 才提醒，缩短延迟）"""
     db: Session = SessionLocal()
     try:
         now = now_bj()
@@ -155,6 +155,11 @@ def check_anniversaries():
     db: Session = SessionLocal()
     try:
         today = today_bj()
+        # 每年 1 月 1 日：重置"每年重复"纪念日的提醒标记（一次性纪念日不受影响），
+        # 否则 reminded_3/2/1/day 置 1 后永久生效，第二年不再提醒
+        if today.month == 1 and today.day == 1:
+            for a in db.query(Anniversary).filter(Anniversary.year == None).all():
+                a.reminded_3 = a.reminded_2 = a.reminded_1 = a.reminded_day = 0
         for a in db.query(Anniversary).all():
             yr = today.year
             this_year = date(yr, a.event_date.month, a.event_date.day)
@@ -209,7 +214,7 @@ def start_scheduler():
         scheduler.add_job(noon_job, CronTrigger(hour=12, minute=0), id="noon", replace_existing=True)
         scheduler.add_job(evening_job, CronTrigger(hour=18, minute=0), id="evening", replace_existing=True)
         scheduler.add_job(sleep_job, CronTrigger(hour=23, minute=0), id="sleep", replace_existing=True)
-        scheduler.add_job(check_due_todos, "interval", minutes=5, id="due_todos", replace_existing=True)
+        scheduler.add_job(check_due_todos, "interval", minutes=1, id="due_todos", replace_existing=True)
         scheduler.add_job(check_habits, "interval", minutes=60, id="habits", replace_existing=True)
         scheduler.add_job(check_anniversaries, CronTrigger(hour=9, minute=0), id="anniv", replace_existing=True)
         scheduler.add_job(check_savings, CronTrigger(hour=9, minute=5), id="savings", replace_existing=True)

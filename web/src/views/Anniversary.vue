@@ -9,7 +9,7 @@
     </div>
     <div class="list">
       <div v-if="!items.length" class="empty">还没有纪念日，加一个吧</div>
-      <div v-for="a in items" :key="a.id" class="item">
+      <div v-for="a in pagedList" :key="a.id" class="item">
         <div>
           <div class="a-name">{{ a.name }}</div>
           <div class="a-date">{{ a.event_date }} {{ a.year ? a.year : '(每年)' }}</div>
@@ -19,16 +19,23 @@
         </div>
         <el-button size="small" text type="danger" @click="del(a)">删</el-button>
       </div>
+      <el-pagination v-if="items.length > pageSize" :total="items.length" :page-size="pageSize"
+        :current-page="page" layout="prev, pager, next" small class="pager"
+        @current-change="p => page = p" />
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import api from '../api/request'
 
 const form = ref({ name: '', date: null })
 const items = ref([])
+// 分页：10 条/页
+const page = ref(1)
+const pageSize = 10
+const pagedList = computed(() => items.value.slice((page.value - 1) * pageSize, page.value * pageSize))
 
 function daysLeft(a){
   const now = new Date(); now.setHours(0,0,0,0)
@@ -44,6 +51,7 @@ async function add(){
   const [y,m,d] = form.value.date.split('-')
   await api.post('/life/anniversaries', { name: form.value.name, event_date: `${m}-${d}`, year: parseInt(y) })
   form.value = { name: '', date: null }
+  page.value = 1
   load()
 }
 async function del(a){ await api.delete(`/life/anniversaries/${a.id}`); load() }
@@ -62,4 +70,5 @@ h2 { font-size: 20px; margin: 0 0 8px; }
 .a-date { font-size: 12px; color: var(--text-3); margin-top: 2px; }
 .a-count { margin-left: auto; font-size: 13px; color: var(--text-2); }
 .a-count .n { font-size: 20px; font-weight: 700; color: #f59e0b; }
+.pager { display: flex; justify-content: center; padding: 6px 0 0; }
 </style>

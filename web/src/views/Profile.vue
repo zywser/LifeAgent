@@ -167,7 +167,7 @@ const avatarColorInput = ref('#2563eb')
 const avatar = ref('')
 const avatarInput = ref('')
 const avatarSrc = computed(() => avatar.value ? '/life/api/' + avatar.value : '')
-const avatarInputSrc = computed(() => avatarInput.value ? '/api/' + avatarInput.value : '')
+const avatarInputSrc = computed(() => avatarInput.value ? '/life/api/' + avatarInput.value : '')
 
 onMounted(async () => {
   userEmail.value = localStorage.getItem('user_email') || auth.user || ''

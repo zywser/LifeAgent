@@ -21,7 +21,7 @@
 
     <div class="list">
       <div v-if="!entries.length" class="empty">还没有记录，写下今天的第一篇吧</div>
-      <div v-for="e in entries" :key="e.id" class="entry">
+      <div v-for="e in pagedList" :key="e.id" class="entry">
         <div class="e-head">
           <span class="e-mood">{{ e.mood }}</span>
           <span class="e-date">{{ formatDateTime(e.date) }}</span>
@@ -33,12 +33,15 @@
         <div class="e-text">{{ e.content }}</div>
         <div v-if="e.summary" class="e-summary">✨ {{ e.summary }}</div>
       </div>
+      <el-pagination v-if="entries.length > pageSize" :total="entries.length" :page-size="pageSize"
+        :current-page="page" layout="prev, pager, next" small class="pager"
+        @current-change="p => page = p" />
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import api from '../api/request'
 import { formatDateTime } from '../utils/format'
 
@@ -49,6 +52,10 @@ const saving = ref(false)
 const editingId = ref(null)
 const entries = ref([])
 const trend = ref('')
+// 分页：10 条/页
+const page = ref(1)
+const pageSize = 10
+const pagedList = computed(() => entries.value.slice((page.value - 1) * pageSize, page.value * pageSize))
 
 async function load(){
   entries.value = (await api.get('/life/diary')).data
@@ -66,6 +73,7 @@ async function save(){
   text.value = ''
   mood.value = '🙂'
   saving.value = false
+  page.value = 1
   load()
 }
 function startEdit(e) {
@@ -107,4 +115,5 @@ h2 { font-size: 20px; margin: 0 0 8px; }
 .e-ops { display: flex; gap: 2px; }
 .e-text { font-size: 14px; color: var(--text); line-height: 1.6; }
 .e-summary { margin-top: 10px; padding: 10px 12px; background: rgba(59,130,246,.1); border-radius: 8px; font-size: 13px; color: #0369a1; line-height: 1.6; }
+.pager { display: flex; justify-content: center; padding: 6px 0 0; }
 </style>

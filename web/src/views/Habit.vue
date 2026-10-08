@@ -5,7 +5,7 @@
       <el-button type="primary" size="small" @click="dialog = true">+ 自定义习惯</el-button>
     </div>
     <div class="grid">
-      <div v-for="h in list" :key="h.id" class="card" :class="{ done: h.checked_today }">
+      <div v-for="h in pagedList" :key="h.id" class="card" :class="{ done: h.checked_today }">
         <div class="h-icon">{{ h.icon || '✨' }}</div>
         <div class="h-name">{{ h.name }}</div>
         <div class="h-streak">连续 {{ h.streak }} 天 · 累计 {{ h.checked_count }} 次 · 每天 {{ h.remind_time }}</div>
@@ -15,6 +15,9 @@
       </div>
       <div v-if="!list.length" class="empty">还没有习惯，点右上角添加一个吧</div>
     </div>
+    <el-pagination v-if="list.length > pageSize" :total="list.length" :page-size="pageSize"
+      :current-page="page" layout="prev, pager, next" small class="pager"
+      @current-change="p => page = p" />
 
     <el-dialog v-model="dialog" title="新建习惯" width="420px">
       <el-form label-width="80px">
@@ -37,13 +40,17 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import api from '../api/request'
 
 const list = ref([])
 const dialog = ref(false)
 const form = ref({ name: '', icon: '💧', remind_time: '09:00' })
 const ICONS = ['💧','🏃','😴','📖','🚫','🗣️','🧘','🥗','☀️','🎯','✍️','🎨','💪','🎵','📚','💊']
+// 分页：10 条/页
+const page = ref(1)
+const pageSize = 10
+const pagedList = computed(() => list.value.slice((page.value - 1) * pageSize, page.value * pageSize))
 
 // 首次进入时自动创建的默认习惯（可删可改，保留自定义）
 const DEFAULTS = [
@@ -67,6 +74,7 @@ async function create(){
   if(!form.value.name.trim()) return
   await api.post('/life/habits', form.value)
   dialog.value = false; form.value = { name: '', icon: '💧', remind_time: '09:00' }
+  page.value = 1
   load()
 }
 async function check(h){ await api.post(`/life/habits/${h.id}/check`); load() }
@@ -89,4 +97,5 @@ onMounted(load)
 .icon-picker { display: flex; flex-wrap: wrap; gap: 6px; }
 .ic { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 8px; font-size: 18px; cursor: pointer; border: 1px solid var(--border); }
 .ic.sel { border-color: #2563eb; background: var(--primary-bg); }
+.pager { display: flex; justify-content: center; padding: 16px 0 0; }
 </style>

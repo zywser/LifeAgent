@@ -317,17 +317,25 @@ async function send() {
   // 先加入用户消息再记录本轮上下文：快照包含本轮提问；
   // 回答进行中切换会话，回答仍会保存回本轮发起的会话
   run.addMessage('user', q)
+  // 发送消息后标记为"当前对话"：无论从新对话页还是历史会话 URL 发起，
+  // 切走再点"对话助手"回来都保留问答现场（豆包式），不再被清成欢迎页
+  run.setCurrentActive(true)
   run.startRound()
   run.setRunning(true); loading.value = true
   // 发消息立即跳转到"这个对话"的独立路由（先用本地占位 id）：
   // 刷新/切走/回答完成都不会把现场挂在新对话页上丢失，回答完成后再换成服务器 id
   router.replace(`/chat/s/${run.currentId}`)
   scrollBottom()
+  // 防重入：个别网络环境下 SSE 的 final/error 事件可能重复到达，
+  // 只允许处理一次，避免同一轮回答被 typewriter 重复写气泡、saveRound 重复保存
+  let finalized = false
   try {
     await streamChat(q, async (event, data) => {
       if (event === 'node_start') run.startNode(data.node)
       else if (event === 'node_end') run.finishNode(data.node)
       else if (event === 'error') {
+        if (finalized) return
+        finalized = true
         const msg = (data && data.message) || '服务异常，请稍后重试'
         run.setRunning(false)
         const answer = '出错了：' + msg
@@ -339,6 +347,8 @@ async function send() {
         }))
       }
       else if (event === 'final') {
+        if (finalized) return
+        finalized = true
         const answer = (data.answer || '').trim() || '（未获取到回答，请稍后重试）'
         run.setRunning(false)
         // 打字机期间保持 loading 锁定，防止并发发送导致气泡乱序

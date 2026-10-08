@@ -12,13 +12,16 @@
     </div>
     <div class="list">
       <div v-if="!list.length" class="empty">暂无待办，添加一件想做的事吧</div>
-      <div v-for="t in sortedList" :key="t.id" class="row" :class="{ done: t.done, overdue: isOverdue(t) }">
+      <div v-for="t in pagedList" :key="t.id" class="row" :class="{ done: t.done, overdue: isOverdue(t) }">
         <el-checkbox :model-value="!!t.done" @change="toggle(t)" />
         <span class="txt">{{ t.text }}</span>
         <span v-if="t.due_at" class="due" :class="{ overdue: isOverdue(t) }">⏰ {{ formatDateTime(t.due_at) }}<span v-if="isOverdue(t)">（已逾期）</span></span>
         <span class="time">{{ formatDate(t.time) }}</span>
         <el-button size="small" text type="danger" @click="del(t)">删</el-button>
       </div>
+      <el-pagination v-if="sortedList.length > pageSize" :total="sortedList.length" :page-size="pageSize"
+        :current-page="page" layout="prev, pager, next" small class="pager"
+        @current-change="p => page = p" />
     </div>
   </div>
 </template>
@@ -48,11 +51,17 @@ function isOverdue(t) {
   return new Date(t.due_at).getTime() < Date.now()
 }
 
+// 分页：10 条/页
+const page = ref(1)
+const pageSize = 10
+const pagedList = computed(() => sortedList.value.slice((page.value - 1) * pageSize, page.value * pageSize))
+
 async function load(){ list.value = (await api.get('/life/todos')).data }
 async function add(){
   const t = newTask.value.trim(); if(!t) return
   await api.post('/life/todos', { text: t, due_at: dueAt.value || null })
   newTask.value=''; dueAt.value=null
+  page.value = 1
   load()
 }
 async function toggle(t){ await api.put(`/life/todos/${t.id}`); load() }
@@ -76,4 +85,5 @@ onMounted(load)
 .due { color: #f59e0b; font-size: 12px; }
 .due.overdue { color: #dc2626; font-weight: 600; }
 .time { color: var(--text-3); font-size: 12px; }
+.pager { display: flex; justify-content: center; padding: 14px 0; }
 </style>

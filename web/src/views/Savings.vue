@@ -5,7 +5,7 @@
       <el-button type="primary" @click="dialog = true">新建目标</el-button>
     </div>
     <div class="grid">
-      <div v-for="g in list" :key="g.id" class="card">
+      <div v-for="g in pagedList" :key="g.id" class="card">
         <div class="goal-name">{{ g.purpose }}</div>
         <div class="bar"><div class="fill" :style="{width: pct(g)+'%'}"></div></div>
         <div class="nums">已存 ¥{{ g.saved_amount }} / ¥{{ g.target_amount }}</div>
@@ -18,6 +18,9 @@
       </div>
       <div v-if="!list.length" class="empty">还没有存钱目标，新建一个吧</div>
     </div>
+    <el-pagination v-if="list.length > pageSize" :total="list.length" :page-size="pageSize"
+      :current-page="page" layout="prev, pager, next" small class="pager"
+      @current-change="p => page = p" />
 
     <el-dialog v-model="dialog" title="新建存钱目标" width="420px">
       <el-form label-width="80px">
@@ -34,13 +37,17 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import api from '../api/request'
 import { formatDate } from '../utils/format'
 
 const list = ref([])
 const dialog = ref(false)
 const form = ref({ purpose: '', target_amount: 10000, deadline: '' })
+// 分页：10 条/页
+const page = ref(1)
+const pageSize = 10
+const pagedList = computed(() => list.value.slice((page.value - 1) * pageSize, page.value * pageSize))
 
 function pct(g){ return Math.min(100, Math.round(g.saved_amount/g.target_amount*100)) }
 async function load(){ const rows = (await api.get('/life/savings')).data; list.value = rows.map(g => ({...g, _amt: ''})) }
@@ -49,6 +56,7 @@ async function create(){
   await api.post('/life/savings', { ...form.value, saved_amount: 0 })
   dialog.value = false
   form.value = { purpose: '', target_amount: 10000, deadline: '' }
+  page.value = 1
   load()
 }
 async function save(g){
@@ -73,4 +81,5 @@ onMounted(load)
 .pct { font-size: 14px; font-weight: 600; color: #10b981; margin: 6px 0 12px; }
 .actions { display: flex; gap: 8px; align-items: center; }
 .empty { grid-column: 1/-1; text-align: center; color: var(--text-3); padding: 40px; background: var(--card); border-radius: 12px; }
+.pager { display: flex; justify-content: center; padding: 16px 0 0; }
 </style>

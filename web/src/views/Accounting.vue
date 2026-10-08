@@ -20,9 +20,19 @@
 
     <div class="analytics">
       <div class="ana-card">
-        <h3>近 7 天支出</h3>
+        <div class="ana-head">
+          <h3>{{ barTitle }}</h3>
+          <div class="ana-filter">
+            <el-radio-group v-model="barRange" size="small">
+              <el-radio-button value="week">近7天</el-radio-button>
+              <el-radio-button value="month">按年月</el-radio-button>
+            </el-radio-group>
+            <el-date-picker v-if="barRange==='month'" v-model="barMonth" type="month" size="small"
+              :clearable="false" format="YYYY年MM月" value-format="YYYY-MM" style="width:130px" />
+          </div>
+        </div>
         <div class="week">
-          <div v-for="(d, i) in weekData" :key="i" class="wk-day">
+          <div v-for="(d, i) in barData" :key="i" class="wk-day">
             <div class="wk-bar-wrap">
               <div class="wk-bar" :style="{ height: pct(d.total, maxDay) + '%' }"></div>
             </div>
@@ -48,7 +58,7 @@
 
     <div class="list">
       <div v-if="!list.length" class="empty">还没有记录，记一笔开始吧</div>
-      <div v-for="r in list" :key="r.id" class="row">
+      <div v-for="r in pagedList" :key="r.id" class="row">
         <span class="cat" :class="r.kind">{{ r.kind === 'income' ? '收入' : r.category }}</span>
         <span class="note">{{ r.note || '—' }}</span>
         <span class="time">{{ formatShort(r.time) }}</span>
@@ -57,6 +67,9 @@
         </span>
         <el-button size="small" text type="danger" @click="del(r.id)">删</el-button>
       </div>
+      <el-pagination v-if="list.length > pageSize" :total="list.length" :page-size="pageSize"
+        :current-page="page" layout="prev, pager, next" small class="pager"
+        @current-change="p => page = p" />
     </div>
   </div>
 </template>
@@ -75,20 +88,42 @@ const spent = computed(() => list.value.filter(r=>r.kind!=='income').reduce((s,r
 const earned = computed(() => list.value.filter(r=>r.kind==='income').reduce((s,r)=>s+Number(r.amount),0).toFixed(2))
 const balance = computed(() => (Number(earned.value) - Number(spent.value)).toFixed(2))
 
-// 近 7 天支出（按本地日期分组）
-const weekData = computed(() => {
-  const days = []
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(); d.setDate(d.getDate() - i)
-    const key = d.toDateString()
+// 条形图筛选：近7天 / 按年月；数据随顶部"支出/收入"切换
+const barRange = ref('week')
+const _now = new Date()
+const barMonth = ref(`${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, '0')}`)
+const barTitle = computed(() => {
+  const seg = barRange.value === 'week' ? '近 7 天' : `${barMonth.value.slice(0, 4)}年${Number(barMonth.value.slice(5))}月`
+  return `${seg} ${kind.value === 'income' ? '收入' : '支出'}`
+})
+// 按日聚合：近 7 天 = 最近 7 天；按年月 = 该月每天
+const barData = computed(() => {
+  const target = kind.value
+  const byDay = (keyFn) => {
     const total = list.value
-      .filter(r => r.kind !== 'income' && new Date(r.time).toDateString() === key)
+      .filter(r => r.kind === target && keyFn(r) )
       .reduce((s, r) => s + Number(r.amount), 0)
-    days.push({ label: `${d.getMonth() + 1}/${d.getDate()}`, total })
+    return total
+  }
+  if (barRange.value === 'week') {
+    const days = []
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i)
+      const key = d.toDateString()
+      days.push({ label: `${d.getMonth() + 1}/${d.getDate()}`, total: byDay(r => new Date(r.time).toDateString() === key) })
+    }
+    return days
+  }
+  const [y, mo] = barMonth.value.split('-').map(Number)
+  const daysInMonth = new Date(y, mo, 0).getDate()
+  const days = []
+  for (let d = 1; d <= daysInMonth; d++) {
+    const key = new Date(y, mo - 1, d).toDateString()
+    days.push({ label: `${mo}/${d}`, total: byDay(r => new Date(r.time).toDateString() === key) })
   }
   return days
 })
-const maxDay = computed(() => Math.max(1, ...weekData.value.map(d => d.total)))
+const maxDay = computed(() => Math.max(1, ...barData.value.map(d => d.total)))
 
 // 分类支出聚合，金额降序
 const catData = computed(() => {
@@ -102,6 +137,11 @@ const catData = computed(() => {
 })
 const catMax = computed(() => Math.max(1, ...catData.value.map(c => c.total)))
 function pct(v, max) { return Math.round(v / max * 100) }
+
+// 明细分页：10 条/页
+const page = ref(1)
+const pageSize = 10
+const pagedList = computed(() => list.value.slice((page.value - 1) * pageSize, page.value * pageSize))
 
 async function load(){
   const { data } = await api.get('/life/expenses')
@@ -123,6 +163,7 @@ async function add(){
   if(!v || v<=0) return
   await api.post('/life/expenses', { amount: v, kind: kind.value, category: category.value, note: note.value })
   amount.value=''; note.value=''
+  page.value = 1
   load()
 }
 async function del(id){
@@ -140,6 +181,10 @@ async function del(id){
 .analytics { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
 .ana-card { background: var(--card); border-radius: 12px; padding: 18px 20px; }
 .ana-card h3 { margin: 0 0 16px; font-size: 15px; color: var(--text); }
+.ana-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 10px; flex-wrap: wrap; }
+.ana-head h3 { margin: 0; }
+.ana-filter { display: flex; align-items: center; gap: 8px; }
+.pager { display: flex; justify-content: center; padding: 14px 0; }
 .ana-empty { color: var(--text-3); font-size: 13px; text-align: center; padding: 20px 0; }
 .week { display: flex; align-items: flex-end; gap: 10px; height: 130px; }
 .wk-day { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; }

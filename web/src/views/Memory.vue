@@ -14,7 +14,7 @@
     </div>
 
     <div v-else class="list">
-      <div v-for="it in items" :key="it.id" class="item">
+      <div v-for="it in pagedList" :key="it.id" class="item">
         <div class="it-head">
           <span class="it-kind" :class="it.kind">{{ it.kind === 'diary' ? '📔 日记' : '💬 对话' }}</span>
           <span class="it-time">{{ formatDateTime(it.time) }}</span>
@@ -22,17 +22,24 @@
         </div>
         <div class="it-content">{{ it.content }}</div>
       </div>
+      <el-pagination v-if="items.length > pageSize" :total="items.length" :page-size="pageSize"
+        :current-page="page" layout="prev, pager, next" small class="pager"
+        @current-change="p => page = p" />
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import api from '../api/request'
 import { formatDateTime } from '../utils/format'
 
 const items = ref([])
 const count = ref(0)
+// 分页：10 条/页
+const page = ref(1)
+const pageSize = 10
+const pagedList = computed(() => items.value.slice((page.value - 1) * pageSize, page.value * pageSize))
 
 async function load() {
   try {
@@ -69,4 +76,5 @@ h2 { font-size: 20px; margin: 0 0 8px; }
 .it-kind.diary { background: rgba(245,158,11,.15); color: #b45309; }
 .it-time { font-size: 12px; color: var(--text-3); flex: 1; }
 .it-content { font-size: 13px; color: var(--text); line-height: 1.7; white-space: pre-wrap; }
+.pager { display: flex; justify-content: center; padding: 6px 0 0; }
 </style>

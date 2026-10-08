@@ -21,12 +21,15 @@
             <span>资料名称</span><span>类型</span><span>入库时间</span><span class="op">操作</span>
           </div>
           <div v-if="!notes.length" class="empty">还没有笔记，上传一份开始吧</div>
-          <div v-for="n in notes" :key="n.doc_id" class="row">
+          <div v-for="n in pagedList" :key="n.doc_id" class="row">
             <span class="name">📎 {{ n.filename }}</span>
             <span class="type">{{ ext(n.filename) }}</span>
             <span class="time">{{ formatDateTime(n.created_at) }}</span>
             <span class="op"><el-button size="small" type="danger" link @click="remove(n.doc_id)">删除</el-button></span>
           </div>
+          <el-pagination v-if="notes.length > pageSize" :total="notes.length" :page-size="pageSize"
+            :current-page="page" layout="prev, pager, next" small class="pager"
+            @current-change="p => page = p" />
         </div>
 
         <div class="search-bar">
@@ -57,7 +60,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { listNotes, uploadNote, deleteNote } from '../api/notes'
 import { formatDateTime, formatDate } from '../utils/format'
 import api from '../api/request'
@@ -69,6 +72,10 @@ const results = ref([])
 const searching = ref(false)
 const stats = ref({})
 let searchTimer = null
+// 分页：10 条/页
+const page = ref(1)
+const pageSize = 10
+const pagedList = computed(() => notes.value.slice((page.value - 1) * pageSize, page.value * pageSize))
 
 async function load() { notes.value = (await listNotes()).data }
 
@@ -97,6 +104,7 @@ async function upload({ file }) {
     const fd = new FormData()
     fd.append('file', file)
     await uploadNote(fd)
+    page.value = 1
     await load()
     await loadStats()
   } finally { uploading.value = false }
@@ -124,6 +132,7 @@ onMounted(() => { load(); loadStats() })
 .row { border-bottom: 1px solid #f7f8fa; font-size: 14px; color: var(--text); }
 .row:last-child { border-bottom: none; }
 .op { text-align: right; }
+.pager { display: flex; justify-content: center; padding: 12px 0 4px; }
 .empty { padding: 40px; text-align: center; color: var(--text-3); font-size: 13px; }
 
 .search-bar { background: var(--card); border-radius: 16px; padding: 14px 20px; box-shadow: 0 1px 3px rgba(0,0,0,.04); }

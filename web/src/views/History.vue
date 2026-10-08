@@ -13,7 +13,7 @@
     </div>
 
     <div v-else class="grid">
-      <div v-for="c in list" :key="c.id" class="card" :class="{new: isNew(c)}" @click="open(c)">
+      <div v-for="c in pagedList" :key="c.id" class="card" :class="{new: isNew(c)}" @click="open(c)">
         <div class="card-top">
           <div class="card-title">
             {{ c.title }}
@@ -28,11 +28,14 @@
         </div>
       </div>
     </div>
+    <el-pagination v-if="list.length > pageSize" :total="list.length" :page-size="pageSize"
+      :current-page="page" layout="prev, pager, next" class="pager"
+      @current-change="p => page = p" />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useRunStore } from '../stores/run'
 import { formatRelative } from '../utils/format'
@@ -42,6 +45,10 @@ const router = useRouter()
 const run = useRunStore()
 const list = ref([])
 const lastView = ref(Number(localStorage.getItem('lifeagent_history_viewed') || 0))
+// 分页：10 条/页
+const page = ref(1)
+const pageSize = 10
+const pagedList = computed(() => list.value.slice((page.value - 1) * pageSize, page.value * pageSize))
 
 function isNew(c){ return new Date(c.time).getTime() > lastView.value }
 
@@ -129,4 +136,5 @@ async function remove(id) {
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .card-meta { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-3); }
+.pager { display: flex; justify-content: center; padding: 20px 0 0; }
 </style>

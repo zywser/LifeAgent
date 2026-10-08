@@ -82,6 +82,9 @@ export const useRunStore = defineStore('run', {
     },
     setRunning(v) { this.running = v; this._persist() },
     setAnswer(a) { this.lastAnswer = a; this._persist() },
+    // 标记"当前对话"：发消息后即为当前对话（回答完成/中断后切回 chat 保留现场）；
+    // 不持久化——刷新后由 loadSaved 恢复为 false
+    setCurrentActive(v) { this.currentIsActive = !!v },
 
     // 规范化消息/载荷：双标签页并发写坏 localStorage 后，坏数据不再上行导致后端 422
     _normMsg(m) {
