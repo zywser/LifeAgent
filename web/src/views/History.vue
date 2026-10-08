@@ -9,7 +9,7 @@
       <div class="empty-icon">🗂️</div>
       <h3>还没有历史对话</h3>
       <p>去对话助手发一条消息，这里会自动保存</p>
-      <el-button type="primary" @click="$router.push('/chat')">开始对话</el-button>
+      <el-button type="primary" @click="goChat">开始对话</el-button>
     </div>
 
     <div v-else class="grid">
@@ -47,7 +47,9 @@ function isNew(c){ return new Date(c.time).getTime() > lastView.value }
 
 // 云端优先，本地兜底
 async function load() {
+  // 过滤掉历史遗留的"新对话"占位（非数字 id 且空消息）
   const local = JSON.parse(localStorage.getItem('lifeagent_conversations') || '[]')
+    .filter(c => /^\d+$/.test(String(c.id)) || (c.messages && c.messages.length))
   try {
     const { data } = await listConversations()
     const localById = new Map(local.map(c => [String(c.id), c]))
@@ -67,18 +69,32 @@ onMounted(async () => {
   lastView.value = Date.now()
 })
 
-async function open(c) {
-  if (!c.messages || !c.messages.length) {
+// 对话助手入口：回答进行中切回现场，平时默认新对话（不残留历史会话内容）
+function goChat() {
+  if (run._round) { router.push('/chat'); return }
+  run.newChat(); router.push('/chat')
+}
+
+async function open(c) {  if (!c.messages || !c.messages.length) {
     try {
       const { data } = await getConversation(c.id)
       c = { ...c, ...data, id: String(data.id) }
     } catch {}
   }
+  // 回答进行中且点击的正是发起会话：store 已是最新现场，直接切回，避免覆盖丢失进行中的用户消息
+  if (run._round?.id && String(c.id) === String(run._round.id)) {
+    router.push(`/chat/s/${c.id}`); return
+  }
+  // 回答进行中也可切换其他会话：进行中的回答由 round 上下文接管，完成时保存回原会话
   run.loadConversation(c)
-  router.push('/chat')
+  // 每个历史会话独立路由（豆包/DeepSeek 式）；无数字 id 的本地占位走 /chat
+  router.push(c.id && /^\d+$/.test(String(c.id)) ? `/chat/s/${c.id}` : '/chat')
 }
 async function remove(id) {
-  try { await deleteConversation(id) } catch {}
+  // 云端会话（数字 id）调 DELETE；本地占位 id（非数字）只删本地，避免 422
+  if (/^\d+$/.test(String(id))) {
+    try { await deleteConversation(id) } catch {}
+  }
   const arr = JSON.parse(localStorage.getItem('lifeagent_conversations') || '[]')
   localStorage.setItem('lifeagent_conversations', JSON.stringify(arr.filter(x => x.id !== id)))
   load()

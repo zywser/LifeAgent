@@ -26,6 +26,8 @@ const router = createRouter({
     { path: '/', redirect: '/home' },
     { path: '/home', component: Home, meta: { auth: true } },
     { path: '/chat', component: Chat, meta: { auth: true } },
+    // 历史会话独立路由（豆包/DeepSeek 式）：每个对话一个 URL，双标签页/多端打开互不干扰
+    { path: '/chat/s/:id', component: Chat, meta: { auth: true } },
     { path: '/graph', component: AgentGraph, meta: { auth: true } },
     { path: '/notes', component: NotesManage, meta: { auth: true } },
     { path: '/history', component: History, meta: { auth: true } },

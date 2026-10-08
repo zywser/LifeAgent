@@ -94,18 +94,26 @@ def web_search(query: str, uid: Annotated[int, InjectedToolArg] = None) -> str:
     """
     if not settings.tavily_api_key:
         return "联网搜索未配置（缺少 TAVILY_API_KEY），无法获取实时信息。"
-    client = TavilyClient(api_key=settings.tavily_api_key)
-    resp = client.search(
-        query=query,
-        search_depth="basic",
-        max_results=5,
-        include_answer=True,
-    )
+    try:
+        client = TavilyClient(api_key=settings.tavily_api_key)
+        resp = client.search(
+            query=query,
+            search_depth="basic",
+            max_results=3,
+            include_answer=True,
+        )
+    except Exception as exc:
+        # 搜索失败也要把原因返回给用户，而不是让上层静默吞掉
+        return f"联网搜索失败：{exc}（请检查 TAVILY_API_KEY 与网络后重试）"
     lines = []
     if resp.get("answer"):
         lines.append(resp["answer"])
     for r in resp.get("results", []):
-        lines.append(f"- {r.get('title','')}：{r.get('content','')}（来源：{r.get('url','')}）")
+        content = (r.get("content") or "").strip()
+        # 网页摘要常被 Tavily 抓成几百上千字全文，截断到 120 字，避免回答超长
+        if len(content) > 120:
+            content = content[:120] + "…"
+        lines.append(f"- {r.get('title', '')}：{content}（来源：{r.get('url', '')}）")
     return "\n".join(lines) if lines else "未搜索到相关结果。"
 
 
@@ -210,7 +218,9 @@ def add_anniversary(
 def query_anniversary(
     uid: Annotated[int, InjectedToolArg] = None,
 ) -> str:
-    """查询纪念日与倒计时。当用户问有哪些纪念日、还有几天到XX、最近有什么纪念日时调用。"""
+    """查询纪念日与倒计时。仅当用户明确提到"纪念日、生日、还有几天到XX、最近有什么纪念日"
+    这类个人纪念日时才调用；查询火车票/车次、机票、酒店、天气、新闻等实时公共信息
+    请调用 web_search，绝不要用本工具。"""
     db = SessionLocal()
     try:
         rows = db.query(Anniversary).filter(Anniversary.user_id == uid).all()

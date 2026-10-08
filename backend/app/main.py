@@ -53,6 +53,19 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+
+# 临时诊断：记录 4xx/5xx 请求（定位 422/401 等前端报错来源）
+@app.middleware("http")
+async def log_bad_requests(request, call_next):
+    try:
+        response = await call_next(request)
+    except Exception as e:
+        print(f"[{request.method}] {request.url.path} -> EXC {type(e).__name__}: {e}", flush=True)
+        raise
+    if response.status_code >= 400:
+        print(f"[{request.method}] {request.url.path} -> {response.status_code}", flush=True)
+    return response
+
 uploads = Path("uploads"); uploads.mkdir(exist_ok=True)
 app.mount("/notes/uploads", StaticFiles(directory=str(uploads)), name="uploads")
 app.include_router(auth_router)

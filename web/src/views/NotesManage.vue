@@ -45,9 +45,9 @@
 
       <aside class="stats-card">
         <div class="stats-title">向量库</div>
-        <div class="stat-row"><span class="sq"></span>personal_notes_idx</div>
+        <div class="stat-row"><span class="sq"></span>个人笔记库</div>
         <div class="stat-row val">： {{ notes.length }} 篇</div>
-        <div class="stat-row"><span class="sq"></span>life_task_memory_idx</div>
+        <div class="stat-row"><span class="sq"></span>经验记忆库</div>
         <div class="stat-row val">： {{ stats.memory_count ?? '-' }} 条</div>
         <div class="stat-row"><span class="sq"></span>最近入库</div>
         <div class="stat-row val">： {{ stats.last_upload ? formatDate(stats.last_upload) : '—' }}</div>

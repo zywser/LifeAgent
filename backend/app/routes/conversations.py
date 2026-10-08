@@ -23,6 +23,22 @@ class ConversationIn(BaseModel):
     messages: list = []
 
 
+def _merge_msgs(a: list, b: list) -> list:
+    """并发保存合并：双标签页/多端同时往同一会话写消息时，
+    按 (role, time, content) 去重合并，两边轮次都保留，避免后写覆盖先写导致消息丢失。"""
+    seen = set()
+    out = []
+    for m in list(a) + list(b):
+        if not isinstance(m, dict):
+            continue
+        key = (m.get("role"), m.get("time"), m.get("content"))
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append({k: m[k] for k in ("role", "content", "time") if k in m})
+    return out
+
+
 def _time(c: Conversation) -> str:
     ts = c.updated_at or c.created_at
     return ts.isoformat() if ts else ""
@@ -61,7 +77,8 @@ def save_conv(body: ConversationIn, user: User = Depends(get_current_user), db: 
         if c:
             c.title = body.title
             c.preview = body.preview
-            c.messages = raw
+            # 并发保存合并：保留已有消息 + 本次消息（去重），防止多端同时写同一会话互相覆盖
+            c.messages = json.dumps(_merge_msgs(json.loads(c.messages or "[]"), body.messages), ensure_ascii=False)
             db.commit()
             db.refresh(c)
             return {"id": c.id, "title": c.title, "preview": c.preview, "time": _time(c)}
@@ -73,10 +90,13 @@ def save_conv(body: ConversationIn, user: User = Depends(get_current_user), db: 
 
 
 @router.get("/{cid}")
-def get_conv(cid: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def get_conv(cid: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    # 前端新对话会先用本地占位 id（非数字）访问，宽松处理避免 422
+    if not cid.isdigit():
+        raise HTTPException(404, "对话不存在")
     c = (
         db.query(Conversation)
-        .filter(Conversation.id == cid, Conversation.user_id == user.id)
+        .filter(Conversation.id == int(cid), Conversation.user_id == user.id)
         .first()
     )
     if not c:
@@ -91,10 +111,13 @@ def get_conv(cid: int, user: User = Depends(get_current_user), db: Session = Dep
 
 
 @router.delete("/{cid}")
-def del_conv(cid: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def del_conv(cid: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    # 本地占位 id（非数字）不存在于云端，返回 404 而非 422，前端只清本地即可
+    if not cid.isdigit():
+        raise HTTPException(404, "对话不存在")
     c = (
         db.query(Conversation)
-        .filter(Conversation.id == cid, Conversation.user_id == user.id)
+        .filter(Conversation.id == int(cid), Conversation.user_id == user.id)
         .first()
     )
     if not c:

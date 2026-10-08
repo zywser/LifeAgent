@@ -36,7 +36,12 @@ import api from '../api/request'
 const form = reactive({ email: '', password: '' })
 const router = useRouter()
 const auth = useAuthStore()
-async function submit() { await auth.login(form); router.push('/chat') }
+async function submit() {
+  await auth.login(form)
+  router.push('/chat')
+  // 通知全局（App.vue 常驻）显示左上角"登录成功"提醒，5 秒自动关闭
+  window.dispatchEvent(new CustomEvent('login-success'))
+}
 const forgotVisible = ref(false)
 const forgotEmail = ref('')
 const forgotSending = ref(false)

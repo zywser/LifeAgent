@@ -8,9 +8,9 @@
           <span class="nav-icon">🏠</span><span>首页</span>
           <span v-if="unread" class="nav-badge">{{ unread }}</span>
         </router-link>
-        <router-link to="/chat" class="nav-item">
+        <a class="nav-item" :class="{ 'router-link-active': isChat }" @click.prevent="goChat">
           <span class="nav-icon">💬</span><span>对话助手</span>
-        </router-link>
+        </a>
         <router-link to="/profile" class="nav-item">
           <span class="nav-icon">👤</span><span>个人资料</span>
         </router-link>
@@ -31,7 +31,7 @@
       <div class="sidebar-history">
         <div class="sh-title">最近对话 <router-link to="/history" class="sh-all">全部</router-link></div>
         <div v-if="!convs.length" class="sh-empty">暂无</div>
-        <div v-for="c in convs.slice(0,5)" :key="c.id" class="sh-item" :class="{new: newConvIds.has(c.id)}" @click="openConv(c)">
+        <div v-for="c in convs.slice(0,5)" :key="c.id" class="sh-item" :class="{new: newConvIds.has(c.id), active: currentConvId === String(c.id)}" @click="openConv(c)">
           <div class="sh-item-title">{{ c.title }}</div>
           <span v-if="newConvIds.has(c.id)" class="new-dot"></span>
           <span class="sh-del" @click.stop="delConv(c.id)">×</span>
@@ -66,7 +66,30 @@
           </el-dropdown>
         </div>
       </header>
-      <main class="content"><router-view /></main>
+      <!-- 全局 Agent 处理中提示：发消息后切到其它页面也能看到等待状态 -->
+      <div v-if="run.running" class="agent-wait">
+        <span class="aw-dot"></span>
+        <span>Agent 正在处理你的任务…切到其它页面不影响，完成后会提醒你</span>
+      </div>
+      <!-- 登录成功提醒：左上角，5 秒自动关闭 -->
+      <transition name="toast-fade">
+        <div v-if="loginToast" class="login-toast">
+          <div class="toast-icon">✓</div>
+          <div class="toast-body">
+            <div class="toast-text">登录成功！欢迎回来。</div>
+            <div class="toast-bar"></div>
+          </div>
+          <span class="toast-close" @click="closeLoginToast">×</span>
+        </div>
+      </transition>
+      <main class="content">
+        <!-- keep-alive 缓存 Chat：切到其它页面再回来，对话消息/链路/输入框原样保留（豆包式体验） -->
+        <router-view v-slot="{ Component }">
+          <keep-alive include="Chat">
+            <component :is="Component" />
+          </keep-alive>
+        </router-view>
+      </main>
     </div>
   </div>
 </template>
@@ -76,6 +99,7 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from './stores/auth'
 import { useRunStore } from './stores/run'
+import { ElNotification } from 'element-plus'
 import { ArrowLeft, Menu } from '@element-plus/icons-vue'
 import api from './api/request'
 import { listConversations, getConversation, deleteConversation } from './api/conversations'
@@ -84,9 +108,28 @@ const router = useRouter()
 const run = useRunStore()
 const route = useRoute()
 const isHome = computed(() => route.path === '/home' || route.path === '/')
+// 对话助手是 <a> 而非 <router-link>，需要手动选中态：/chat 与 /chat/s/:id 均选中
+const isChat = computed(() => route.path === '/chat' || route.path.startsWith('/chat/'))
+// 当前正在浏览的会话 id：/chat/s/:id 时高亮侧边栏对应会话项，/chat 与其它页不高亮
+const currentConvId = computed(() => {
+  const m = route.path.match(/^\/chat\/s\/(.+)$/)
+  return m ? m[1] : ''
+})
 const profile = ref(JSON.parse(localStorage.getItem('lifeagent_profile') || '{}'))
 const avatarSrc = computed(() => profile.value.avatar ? '/life/api/' + profile.value.avatar : '')
 const theme = ref(localStorage.getItem('lifeagent_theme') || 'light')
+// 登录成功提醒（左上角 5 秒自动关闭）：Login.vue 登录成功后派发 login-success 事件
+const loginToast = ref(false)
+let loginToastTimer = null
+function showLoginToast() {
+  loginToast.value = true
+  if (loginToastTimer) clearTimeout(loginToastTimer)
+  loginToastTimer = setTimeout(() => { loginToast.value = false }, 5000)
+}
+function closeLoginToast() {
+  loginToast.value = false
+  if (loginToastTimer) { clearTimeout(loginToastTimer); loginToastTimer = null }
+}
 const themeColors = { light: '#2563eb', dark: '#111827', vivid: '#ff5a2f', nature: '#5c7f66' }
 const themeColor = computed(() => themeColors[theme.value] || '#2563eb')
 function setTheme(name) { theme.value = name; document.documentElement.dataset.theme = name; localStorage.setItem('lifeagent_theme', name) }
@@ -98,7 +141,9 @@ let timer = null
 
 // 会话列表：云端优先，本地 localStorage 兜底（离线/后端不可用时）
 async function loadConvs() {
+  // 过滤掉历史遗留的"新对话"占位（非数字 id 且空消息）：它们只是临时草稿，不该出现在最近对话
   const local = JSON.parse(localStorage.getItem('lifeagent_conversations') || '[]')
+    .filter(c => /^\d+$/.test(String(c.id)) || (c.messages && c.messages.length))
   // 未登录时不要发 API 请求：会触发 401→refresh 失败→强制跳登录的死循环
   if (!localStorage.getItem('access_token')) { convs.value = local; return }
   try {
@@ -125,10 +170,32 @@ async function openConv(c) {
       c = { ...c, ...data, id: String(data.id) }
     } catch {}
   }
-  run.loadConversation(c); router.push('/chat')
+  // 回答进行中且点击的正是发起会话：store 已是最新现场，直接切回，避免覆盖丢失进行中的用户消息
+  if (run._round?.id && String(c.id) === String(run._round.id)) {
+    router.push(`/chat/s/${c.id}`); return
+  }
+  // 回答进行中也可切换其他会话：进行中的回答由 round 上下文接管，完成时保存回原会话
+  run.loadConversation(c)
+  // 每个历史会话独立路由（豆包/DeepSeek 式）；无数字 id 的本地占位走 /chat
+  router.push(c.id && /^\d+$/.test(String(c.id)) ? `/chat/s/${c.id}` : '/chat')
+}
+// 对话助手入口：回答进行中切回现场（round 接管，等待的回答正在保存回发起会话）；
+// 当前对话（发过消息/回答完成/回答中断，store 有问答内容）→ 切回显示现场；
+// 浏览过历史会话或没有对话 → 默认新对话，绝不残留上一个浏览的历史会话内容
+function goChat() {
+  if (run._round) { router.push('/chat'); return }
+  if (run.currentIsActive && run.messages.length) {
+    router.push('/chat')
+    return
+  }
+  run.newChat()
+  router.push('/chat')
 }
 async function delConv(id) {
-  try { await deleteConversation(id) } catch {}
+  // 云端会话（数字 id）调 DELETE；本地占位 id（非数字）只删本地，避免 422
+  if (/^\d+$/.test(String(id))) {
+    try { await deleteConversation(id) } catch {}
+  }
   const arr = JSON.parse(localStorage.getItem('lifeagent_conversations') || '[]').filter(x => x.id !== id)
   localStorage.setItem('lifeagent_conversations', JSON.stringify(arr))
   loadConvs()
@@ -171,8 +238,33 @@ async function pollNotifs() {
 }
 
 function loadProfile(){ profile.value = JSON.parse(localStorage.getItem('lifeagent_profile') || '{}') }
-onMounted(() => { document.documentElement.dataset.theme = theme.value; pollUnread(); loadConvs(); pollNotifs(); timer = setInterval(() => { pollUnread(); loadConvs(); pollNotifs() }, 10000); window.addEventListener('notify-updated', pollUnread); window.addEventListener('conversations-updated', loadConvs); window.addEventListener('profile-updated', loadProfile); window.addEventListener('new-reply', e => { if(e.detail?.id) newConvIds.value.add(e.detail.id) }); window.addEventListener('click', requestNotifPermission, { once: true }) })
-onUnmounted(() => { clearInterval(timer); window.removeEventListener('notify-updated', pollUnread); window.removeEventListener('conversations-updated', loadConvs); window.removeEventListener('profile-updated', loadProfile); window.removeEventListener('click', requestNotifPermission) })
+// —— Agent 回答完成/出错的全局提醒：切到其它页面也能收到 ——
+function onAgentReplyDone(e) {
+  const d = e.detail || {}
+  if (d.id) newConvIds.value.add(d.id)
+  const failed = (d.preview || '').startsWith('任务执行出错') || (d.preview || '').startsWith('回答中断')
+  const inChat = route.path === '/chat'
+  // 正在对话页：气泡已直接展示，不再弹 toast，仅保留红点
+  if (!inChat) {
+    ElNotification({
+      title: failed ? '任务未完成' : '回答完成',
+      message: d.preview || (d.title || '你的任务已完成'),
+      type: failed ? 'error' : 'success',
+      duration: 6000,
+      // 点击通知直达该会话（独立路由 /chat/s/id）
+      onClick: () => router.push(d.id && /^\d+$/.test(String(d.id)) ? `/chat/s/${d.id}` : '/chat')
+    })
+  }
+  // 系统级通知（权限已授予时）；点击同样直达该会话
+  try {
+    if (!failed && 'Notification' in window && Notification.permission === 'granted') {
+      const n = new Notification('Life Agent：回答完成', { body: d.preview || d.title || '你的任务已完成' })
+      n.onclick = () => { window.focus(); router.push(d.id && /^\d+$/.test(String(d.id)) ? `/chat/s/${d.id}` : '/chat') }
+    }
+  } catch {}
+}
+onMounted(() => { document.documentElement.dataset.theme = theme.value; pollUnread(); loadConvs(); pollNotifs(); timer = setInterval(() => { pollUnread(); loadConvs(); pollNotifs() }, 10000); window.addEventListener('notify-updated', pollUnread); window.addEventListener('conversations-updated', loadConvs); window.addEventListener('profile-updated', loadProfile); window.addEventListener('new-reply', e => { if(e.detail?.id) newConvIds.value.add(e.detail.id) }); window.addEventListener('agent-reply-done', onAgentReplyDone); window.addEventListener('login-success', showLoginToast); window.addEventListener('click', requestNotifPermission, { once: true }) })
+onUnmounted(() => { clearInterval(timer); window.removeEventListener('notify-updated', pollUnread); window.removeEventListener('conversations-updated', loadConvs); window.removeEventListener('profile-updated', loadProfile); window.removeEventListener('agent-reply-done', onAgentReplyDone); window.removeEventListener('login-success', showLoginToast); window.removeEventListener('click', requestNotifPermission); if (loginToastTimer) clearTimeout(loginToastTimer) })
 watch(() => route.path, p => { if (p === '/chat') newConvIds.value = new Set(); sidebarOpen.value = false })
 function logout() { auth.logout(); router.push('/login') }
 </script>
@@ -202,6 +294,7 @@ function logout() { auth.logout(); router.push('/login') }
 .sh-empty { font-size: 12px; color: var(--text-3); text-align: center; padding: 8px; }
 .sh-item { padding: 7px 10px; border-radius: 8px; cursor: pointer; font-size: 13px; color: var(--text-2); display: flex; align-items: center; justify-content: space-between; }
 .sh-item:hover { background: var(--hover); color: var(--primary); }
+.sh-item.active { background: var(--primary-bg); color: var(--primary); font-weight: 600; }
 .sh-item-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
 .sh-del { color: #d1d5db; font-size: 16px; padding: 0 4px; line-height: 1; }
 .sh-del:hover { color: #ef4444; }
@@ -216,8 +309,30 @@ function logout() { auth.logout(); router.push('/login') }
 .top-actions { display: flex; gap: 18px; color: var(--text-2); font-size: 18px; align-items: center; }
 .content { flex: 1; overflow: auto; padding: 24px; height: 0; }
 .logo-avatar { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; }
+
+/* 全局 Agent 处理中横条 */
+.agent-wait {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 16px; font-size: 13px;
+  background: var(--primary-bg); color: var(--primary);
+  border-bottom: 1px solid var(--primary-border);
+  flex-shrink: 0;
+}
+.aw-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); animation: awPulse 1.2s ease-in-out infinite; }
+@keyframes awPulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: .4; transform: scale(1.4); } }
 .theme-dot { display: inline-block; width: 18px; height: 18px; border-radius: 50%; cursor: pointer; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.08); vertical-align: middle; }
 .tdot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; vertical-align: middle; }
+
+/* —— 登录成功提醒（左上角，5 秒自动关）—— */
+.login-toast { position: fixed; top: 24px; left: 24px; z-index: 3000; display: flex; align-items: center; gap: 12px; background: var(--card); border-radius: 12px; padding: 14px 18px; box-shadow: 0 8px 30px var(--shadow); min-width: 240px; }
+.toast-icon { width: 32px; height: 32px; border-radius: 50%; background: var(--success, #10b981); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 700; flex-shrink: 0; }
+.toast-body { flex: 1; position: relative; }
+.toast-text { font-size: 14px; color: var(--text); font-weight: 600; padding-bottom: 6px; }
+.toast-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; border-radius: 2px; background: var(--success, #10b981); }
+.toast-close { color: var(--text-3); font-size: 16px; cursor: pointer; line-height: 1; padding: 2px; }
+.toast-close:hover { color: var(--text); }
+.toast-fade-enter-active, .toast-fade-leave-active { transition: all .3s ease; }
+.toast-fade-enter-from, .toast-fade-leave-to { opacity: 0; transform: translateY(-12px); }
 
 /* —— 移动端适配：侧边栏折叠为抽屉 —— */
 .menu-btn { display: none; }
