@@ -214,7 +214,7 @@ def start_scheduler():
         scheduler.add_job(noon_job, CronTrigger(hour=12, minute=0), id="noon", replace_existing=True)
         scheduler.add_job(evening_job, CronTrigger(hour=18, minute=0), id="evening", replace_existing=True)
         scheduler.add_job(sleep_job, CronTrigger(hour=23, minute=0), id="sleep", replace_existing=True)
-        scheduler.add_job(check_due_todos, "interval", minutes=1, id="due_todos", replace_existing=True)
+        scheduler.add_job(check_due_todos, "interval", seconds=10, id="due_todos", replace_existing=True)
         scheduler.add_job(check_habits, "interval", minutes=60, id="habits", replace_existing=True)
         scheduler.add_job(check_anniversaries, CronTrigger(hour=9, minute=0), id="anniv", replace_existing=True)
         scheduler.add_job(check_savings, CronTrigger(hour=9, minute=5), id="savings", replace_existing=True)
