@@ -81,6 +81,26 @@ def infer_extra_tools(message: str, called: list[dict]) -> list[dict]:
             "query_savings" not in names and "update_savings" not in names:
         extra.append({"name": "query_savings", "args": {}})
 
+    # —— 账单查询（查）——
+    # 防模型把"花了多少钱/账单"误调 record_expense 记一笔（曾实测误记 ¥0.0 进账单）
+    expense_query_words = ("花了多少", "账单", "支出情况", "消费", "用了多少", "花费", "花了什么",
+                           "这个月花", "上个月花", "今天花", "查账", "流水", "花销", "开销",
+                           "花了多少钱", "记账情况")
+    expense_write_words = ("记一笔", "记一下", "记录", "报销", "记账", "付了", "买了", "存一笔")
+    if any(k in m for k in expense_query_words) and not any(k in m for k in expense_write_words) \
+            and "query_expenses" not in names and "record_expense" not in names:
+        if "这个月" in m or "本月" in m:
+            _days = 30
+        elif "上个月" in m:
+            _days = 30
+        elif "今天" in m or "昨天" in m:
+            _days = 1
+        elif "最近" in m or "这周" in m or "本周" in m:
+            _days = 7
+        else:
+            _days = 7
+        extra.append({"name": "query_expenses", "args": {"days": _days}})
+
     # —— 日常生活联网搜索兜底（宽触发）——
     # 模型训练知识有滞后，凡带查询意图、非问候闲聊、非个人数据操作的问题，
     # 模型漏调 web_search 时一律补调，宁可多搜一次，也不用过时知识硬答。

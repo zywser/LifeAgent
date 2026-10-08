@@ -46,6 +46,47 @@ def record_expense(
 
 
 @tool
+def query_expenses(
+    days: int = 7,
+    uid: Annotated[int, InjectedToolArg] = None,
+) -> str:
+    """查询消费/账单记录。当用户问花了多少钱、账单、支出、消费明细、这个月用了多少、
+    最近花了什么时调用（查询，绝不能用来记一笔）。
+    days 为查询最近多少天（默认7天，用户说'今天'传1、'这个月'传30）；
+    返回支出与收入的分类汇总、合计和最近明细。"""
+    db = SessionLocal()
+    try:
+        since_dt = datetime.combine(
+            datetime.now(_BJ).date() - timedelta(days=max(0, days - 1)),
+            datetime.min.time(),
+        )
+        rows = (db.query(Expense).filter(
+            Expense.user_id == uid, Expense.created_at >= since_dt
+        ).order_by(Expense.created_at.desc()).all())
+        if not rows:
+            return f"最近 {days} 天没有消费记录。"
+        exp = sum(r.amount for r in rows if r.kind != "income")
+        inc = sum(r.amount for r in rows if r.kind == "income")
+        cats: dict[str, float] = {}
+        for r in rows:
+            if r.kind != "income":
+                c = r.category or "其他"
+                cats[c] = cats.get(c, 0) + r.amount
+        top = "、".join(f"{k}¥{v:.1f}" for k, v in sorted(cats.items(), key=lambda x: -x[1])[:5])
+        lines = [f"最近 {days} 天：共 {len(rows)} 笔，支出合计 ¥{exp:.1f}，收入 ¥{inc:.1f}。"]
+        if top:
+            lines.append(f"主要花在：{top}")
+        lines.append("明细：")
+        for r in rows[:10]:
+            label = "收入" if r.kind == "income" else "支出"
+            t = r.created_at.strftime("%m-%d %H:%M") if r.created_at else "——"
+            lines.append(f"- {t} {label} {r.category} ¥{r.amount:.1f} {r.note or ''}")
+        return "\n".join(lines)
+    finally:
+        db.close()
+
+
+@tool
 def create_todo(
     text: str,
     due_at: str = "",
@@ -363,7 +404,7 @@ def query_memory(
 
 
 # 暴露给模型的工具列表（uid 会在 bind_tools 时被自动排除，因为它是 InjectedToolArg）
-TOOLS = [record_expense, create_todo, write_diary, web_search,
+TOOLS = [record_expense, query_expenses, create_todo, write_diary, web_search,
          check_habit, query_habits, add_anniversary, query_anniversary,
          record_water, query_water, query_savings, update_savings,
          query_notes, query_memory]
