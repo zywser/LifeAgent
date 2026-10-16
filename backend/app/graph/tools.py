@@ -14,6 +14,7 @@ from zoneinfo import ZoneInfo
 _BJ = ZoneInfo("Asia/Shanghai")
 from langchain_core.tools import tool, InjectedToolArg
 from tavily import TavilyClient
+from urllib.parse import urlparse
 
 from ..config import settings
 from ..db.session import SessionLocal
@@ -154,7 +155,11 @@ def web_search(query: str, uid: Annotated[int, InjectedToolArg] = None) -> str:
         # 网页摘要常被 Tavily 抓成几百上千字全文，截断到 120 字，避免回答超长
         if len(content) > 120:
             content = content[:120] + "…"
-        lines.append(f"- {r.get('title', '')}：{content}（来源：{r.get('url', '')}）")
+        title = (r.get("title") or "").strip()
+        if not title:
+            # Tavily 部分结果没有标题：用域名代替（否则参考来源会退化成裸 URL）
+            title = urlparse(r.get("url", "")).netloc or r.get("url", "")
+        lines.append(f"- {title}：{content}（来源：{r.get('url', '')}）")
     return "\n".join(lines) if lines else "未搜索到相关结果。"
 
 

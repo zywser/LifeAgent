@@ -28,7 +28,7 @@
                 <div v-if="m.time" class="bubble-time">{{ formatTime(m.time) }}</div>
               </div>
               <div class="msg-line" :class="m.role">
-                <el-button v-if="m.role === 'assistant' && m.content" size="small" text class="copy-btn" @click="copy(m.content)">复制</el-button>
+                <el-button v-if="m.content" size="small" text class="copy-btn" @click="copy(m.content)">复制</el-button>
               </div>
             </div>
           </div>
@@ -50,11 +50,15 @@
           <el-button size="small" :type="tool==='plan'?'success':'default'" plain @click="toggleTool('plan')">📅 规划</el-button>
           <el-button size="small" :type="tool==='review'?'success':'default'" plain @click="toggleTool('review')">📊 复盘</el-button>
           <el-button size="small" :type="tool==='habit'?'success':'default'" plain @click="toggleTool('habit')">🏃 习惯</el-button>
+          <div class="web-switch" :class="{ off: !webSearch }">
+            <span>联网搜索</span>
+            <el-switch v-model="webSearch" size="small" :active-text="'开'" :inactive-text="'关'" />
+          </div>
         </div>
         <div class="input-wrap">
           <el-input v-model="input" type="textarea" :autosize="{minRows:1,maxRows:4}"
             :placeholder="placeholder" @keydown.enter.exact.prevent="send" />
-          <el-button type="primary" :loading="loading" @click="send" class="send-btn">发送</el-button>
+          <el-button :type="loading ? 'danger' : 'primary'" @click="loading ? stopStreaming() : send()" class="send-btn">{{ loading ? '停止' : '发送' }}</el-button>
         </div>
       </div>
     </div>
@@ -84,6 +88,9 @@
               <span v-if="s.status === 'running'" class="badge running">执行中</span>
               <span v-else-if="s.status === 'done'" class="badge done">已完成</span>
               <span v-else class="badge waiting">等待</span>
+            </div>
+            <div v-if="s.status === 'running' && callingTool" class="tl-tool">
+              <span class="tool-spinner"></span>正在调用 {{ callingTool }}
             </div>
           </div>
         </div>
@@ -118,6 +125,26 @@ const messages = computed(() => run.messages)
 const running = computed(() => run.running)
 const scrollEl = ref(null)
 const tool = ref('')
+// 当前正在调用的工具（来自后端 tool_call 事件），显示在执行链路的运行节点旁
+const callingTool = ref('')
+// 联网搜索开关：默认关闭（防幻觉优先，个人资料问答走向量库），localStorage 记忆用户选择
+const webSearch = ref(localStorage.getItem('la_web_search') === '1')
+watch(webSearch, (v) => localStorage.setItem('la_web_search', v ? '1' : '0'))
+// 停止链路：发送后按钮变"停止"，点击中断本次 SSE，全部节点停止。
+// stopFlag：点击停止后置位，后续所有在途 SSE 事件（node_start 等）一律忽略，
+// 杜绝"已停止却还在 push 新执行节点"的竞态（实测停止后 Executor 仍显示执行中）。
+const stopCtrl = ref(null)
+const stopFlag = ref(false)
+function stopStreaming() {
+  stopFlag.value = true
+  if (stopCtrl.value) { stopCtrl.value.abort(); stopCtrl.value = null }
+  callingTool.value = ''
+  run.finishAllNodes()
+  run.setRunning(false)
+  run.addMessage('assistant', '对话已停止')
+  run.finishRound()
+  loading.value = false
+}
 
 // —— 回答文本里的链接转为可点击 <a>（先转义再链接化，防 XSS）——
 function escapeHtml(s) {
@@ -322,6 +349,10 @@ async function send() {
   run.setCurrentActive(true)
   run.startRound()
   run.setRunning(true); loading.value = true
+  callingTool.value = ''
+  stopFlag.value = false
+  const ctrl = new AbortController()
+  stopCtrl.value = ctrl
   // 发消息立即跳转到"这个对话"的独立路由（先用本地占位 id）：
   // 刷新/切走/回答完成都不会把现场挂在新对话页上丢失，回答完成后再换成服务器 id
   router.replace(`/chat/s/${run.currentId}`)
@@ -331,15 +362,21 @@ async function send() {
   let finalized = false
   try {
     await streamChat(q, async (event, data) => {
+      // 已点击停止：忽略所有在途事件，链路保持停止态
+      if (stopFlag.value) return
       if (event === 'node_start') run.startNode(data.node)
       else if (event === 'node_end') run.finishNode(data.node)
+      else if (event === 'tool_call') callingTool.value = data.name || ''
       else if (event === 'error') {
         if (finalized) return
         finalized = true
+        callingTool.value = ''
         const msg = (data && data.message) || '服务异常，请稍后重试'
         run.setRunning(false)
         const answer = '出错了：' + msg
         run.addMessage('assistant', answer)
+        run.finishAllNodes()
+        run.addMessage('assistant', '对话已结束')
         const saved = await run.saveRound(answer)
         loading.value = false
         window.dispatchEvent(new CustomEvent('agent-reply-done', {
@@ -349,12 +386,16 @@ async function send() {
       else if (event === 'final') {
         if (finalized) return
         finalized = true
+        callingTool.value = ''
         const answer = (data.answer || '').trim() || '（未获取到回答，请稍后重试）'
         run.setRunning(false)
         // 打字机期间保持 loading 锁定，防止并发发送导致气泡乱序
         await typewriter(answer)
         loading.value = false
         run.setAnswer(answer)
+        run.finishAllNodes()
+        // 结束提示气泡：回答完成后明确告知"对话已结束"（不进入 saveRound 的回答正文）
+        run.addMessage('assistant', '对话已结束')
         // 保存到发起回答的会话（round.id）：即使中途切换过会话，数据也完整回到原会话
         const roundId = run._round?.id
         const saved = await run.saveRound(answer)
@@ -376,7 +417,7 @@ async function send() {
         }
       }
       scrollBottom()
-    })
+    }, run.currentId || 'default', { web_search: webSearch.value, signal: ctrl.signal })
   } catch (e) {
     run.setRunning(false)
     // 页面刷新/关闭/切走导致 SSE 连接中断：不保存"出错了"垃圾气泡，
@@ -391,10 +432,13 @@ async function send() {
         detail: { id: saved?.id || run._round?.id || run.currentId, title: saved?.title || '', preview: '回答中断：' + e.message }
       }))
     } else {
-      // 连接中断：不写错误气泡；结束 round，避免"对话助手"入口残留现场
+      // 连接中断：节点统一收尾；用户主动停止时 stopStreaming 已输出"对话已停止"，
+      // 其余中断（切走/断网）补"对话已结束"提示；不保存"出错了"垃圾气泡
+      run.finishAllNodes()
+      if (!stopFlag.value) run.addMessage('assistant', '对话已结束')
       run.finishRound()
     }
-  } finally { loading.value = false; scrollBottom() }
+  } finally { loading.value = false; stopCtrl.value = null; scrollBottom() }
 }
 </script>
 
@@ -438,7 +482,9 @@ async function send() {
 .thinking-text { font-size: 13px; }
 @keyframes pulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.5); opacity: .5; } }
 .composer { padding: 16px 20px 20px; border-top: 1px solid #f0f1f3; }
-.quick-actions { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+.quick-actions { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; align-items: center; }
+.web-switch { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; font-size: 12px; color: var(--text-secondary, #6b7280); background: var(--card, #fff); border: 1px solid var(--border, #e5e7eb); border-radius: 12px; padding: 2px 10px; height: 28px; }
+.web-switch.off { color: #9ca3af; }
 .input-wrap { display: flex; gap: 10px; align-items: flex-end; }
 .input-wrap .el-textarea { flex: 1; }
 .send-btn { align-self: stretch; }
@@ -464,6 +510,9 @@ async function send() {
 .tl-name { font-size: 14px; font-weight: 600; color: var(--text); }
 .tl-item.waiting .tl-name { color: var(--text-3); font-weight: 500; }
 .tl-status { margin-top: 4px; }
+.tl-tool { margin-top: 5px; font-size: 12px; color: #2563eb; display: flex; align-items: center; gap: 5px; }
+.tl-tool .tool-spinner { width: 10px; height: 10px; border-radius: 50%; border: 2px solid rgba(37,99,235,.25); border-top-color: #2563eb; animation: tl-rotate .7s linear infinite; }
+@keyframes tl-rotate { to { transform: rotate(360deg) } }
 .badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 10px; line-height: 1.4; }
 .badge.running { background: var(--primary-bg); color: #2563eb; }
 .badge.done { background: rgba(16,185,129,.12); color: #059669; }

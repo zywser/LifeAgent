@@ -75,6 +75,14 @@ export const useRunStore = defineStore('run', {
       if (s) s.status = 'done'
       this._persist()
     },
+    // 链路整体收尾：final/error/停止时把所有未完成节点置为已完成，
+    // 避免"当前节点一直转圈"的假死动画
+    finishAllNodes() {
+      for (const s of this.steps) {
+        if (s.status !== 'done') s.status = 'done'
+      }
+      this._persist()
+    },
     addMessage(role, content, time) {
       // 每条消息带本地时间戳；兼容旧数据（无 time 时前端自动跳过显示）
       this.messages.push({ role, content, time: time || new Date().toISOString() })

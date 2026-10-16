@@ -17,6 +17,9 @@ llm = ChatOpenAI(
     api_key=settings.dashscope_api_key,
     streaming=True,
     temperature=0.7,
+    # 超时与重试兜底：DashScope 限流/网络卡顿时避免单次调用挂起过久
+    timeout=60,
+    max_retries=2,
 )
 
 embeddings = OpenAIEmbeddings(

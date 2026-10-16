@@ -54,6 +54,9 @@ Life Agent/
 ├── backend/
 │   ├── .env.example         # 配置模板（复制为 .env 填写）
 │   ├── requirements.txt
+│   ├── requirements-dev.txt # 评测依赖（pytest + pytest-asyncio）
+│   ├── pytest.ini           # 评测配置（asyncio_mode=auto）
+│   ├── tests/               # 自动化评测（56 条：工具/注入/质量/可观测/联网开关与资料联动）
 │   ├── Dockerfile           # python:3.13-slim + tzdata（时区数据）
 │   └── app/
 │       ├── main.py          # FastAPI 入口：lifespan 建表/补列/起调度器
@@ -123,7 +126,70 @@ START → supervisor → planner → retriever
 
 ### 对话流（SSE）
 
-`POST /chat` 返回 `text/event-stream`，事件序列：`node_start` / `node_end`（链路节点点亮）、`token`（流式 token）、`final`（最终回答，工具结果优先）、`error`。每轮请求使用唯一 `thread_id`，避免上一轮的中间状态串入新问题。
+`POST /chat` 返回 `text/event-stream`，事件序列：`node_start` / `node_end`（链路节点点亮，`node_end` 携带节点详情：planner 的 plan、executor 的子任务进度、reviewer 的质检分与是否重试）、`token`（流式 token）、`tool_call`（模型决策的工具调用，前端显示"正在调用 XX"）、`final`（最终回答，工具结果优先）、`error`（带 `error_type` 区分 LLM 超时/向量库不可用等）。每轮请求使用唯一 `thread_id`，避免上一轮的中间状态串入新问题。
+
+### 联网搜索开关 + 资料联动（防幻觉）
+
+**问题**：用户上传个人资料 PDF 到「我的资料」页后，对话里问"我叫什么名字 / 我上传了什么资料 / 我做了什么项目"时曾出现幻觉——模型把**联网搜索的无关结果**（如"Little Fox 中文歌""微针热玛吉"）当成用户个人资料来回答。
+
+**根因**：① 联网搜索是宽触发兜底，消息含"什么/怎么样/做什么"就被补调 web_search，个人资料问题也被拿去联网；② retriever 只按原始问句检索 k=4，问法一变（"查看我的资料"能中、"我上传了什么资料"不中）就漏召回；③ executor prompt 没有"资料优先、无据直说"硬约束。
+
+**改造（三层）**：
+
+1. **联网搜索开关（默认关闭）**
+   - 前端对话输入区有"联网搜索"开关（`el-switch`），默认关，选择存 `localStorage`；
+   - 后端 `ChatRequest.web_search` 默认 `False`，关闭时三层拦截：`infer_extra_tools` 不补 web_search（幻觉主源）→ `execute_tool_calls` 过滤模型自行决策的 web_search → executor prompt 切换为"联网搜索已关闭，不要调用 web_search，实时类问题如实说明"；
+   - 开启时行为与原来一致（查车票/天气/新品等实时信息）。
+
+2. **资料联动强化（不点任何技能也能答对）**
+   - retriever 升级：k 4→6；问句**壳词剥离**（"我上传了/我的资料/我之前"等前缀剥掉再检）；首次无结果时**二次检索**；结果带来源文件名（回答可说明"来自 XX 资料"）；
+   - executor prompt 新增资料优先硬约束：问个人资料**只能**基于【个人笔记】【历史经验】回答，资料里没有的明确说"你的资料里没找到"，**绝不编造、绝不把搜索结果当个人资料、资料类问题禁止 web_search**。
+
+3. **幻觉防线（代码级，双保险）**
+   - reviewer：资料类问题 + 检索无召回（`notes_found`/`memory_found` 均 False）→ **不调 LLM**，直接以"你的资料里没找到这部分内容…"结束，review_score=0；
+   - chat 出口兜底：链路结束后同条件再次强制替换最终回答，防止模型输出绕过后端组装的编造内容。
+
+4. **跨轮上下文记忆（追问不丢上文）**
+   - 前端把当前会话 id 随请求传给后端（`streamChat(…, run.currentId, …)`）；
+   - 后端 `load_history_text()` 从 conversations 表读取最近 10 条 user/assistant 消息（排除当前问句、占位会话兜底），注入链路初始 state；
+   - executor / planner 的 prompt 各加"对话历史"数据位，追问（如"有哪些风险"承接上文"实施时间节点"）能正确理解指代，首轮回答质量提升、重试循环减少（不再出现 Executor 反复重试导致的"卡住"）。
+
+5. **执行挂起兜底（Executor 卡死问题）**
+   - 根因：executor 的 LLM 流式调用无超时（ChatOpenAI 默认 600s），DashScope 限流/网络卡顿时单次 astream 可挂数分钟，SSE 一直"执行中"（实测 Executor 卡到第 9 次仍不结束）；
+   - 后端：executor 的 astream 用 `asyncio.timeout(EXECUTOR_TIMEOUT=60)` 包裹，超时跳过该子任务继续链路；`subtask_index > 6` 硬上限杜绝子任务无限循环；ChatOpenAI 加 `timeout=60, max_retries=2`；
+   - 前端：发送按钮在运行中变**停止**按钮，点击即 AbortController 中断本次 SSE（全部链路停止，不写错误气泡，静默收尾）。
+
+> 模块三"资料问答技能按钮"（锁定只答资料模式）按用户决策暂缓，先观察模块一+二的实际效果。
+
+### 可观测与评测
+
+**LangSmith 全链路追踪**
+- 配置项在 `backend/.env`（`LANGSMITH_TRACING / API_KEY / PROJECT / ENDPOINT`）；
+- `config.py` 在启动时把 LangSmith 配置**显式写入环境变量**（`LANGCHAIN_TRACING_V2` / `LANGCHAIN_PROJECT` 等），不再依赖第三方库读取 `.env` 的时机；未配 `LANGSMITH_API_KEY` 时自动关闭 tracing，不影响正常运行；
+- 每个对话 run 携带 `metadata`（uid / session_id / thread_id），LangSmith 上可按用户、按会话检索整条调用链路，看到每个节点的 LLM 调用、token 用量与工具入参。
+
+**自动化评测套件（68 条，通过率 100%）**
+
+```bash
+cd backend
+pip install -r requirements-dev.txt   # pytest + pytest-asyncio
+python -m pytest -v                   # 全部离线可复现，不连 MySQL/Redis/外部 API
+```
+
+| 评测组 | 条数 | 覆盖 |
+|---|---|---|
+| 工具调用 | 16 | 工具决策捕获、决策与执行分离（打回不重复写库）、uid 防伪造注入、漏调兜底补调、查询/记录防误记、纪念日误调守卫、工具真实落库与聚合查询 |
+| 提示词注入防护 | 8 | 直接/间接注入的系统提示隔离、危险动作无工具可调、planner 把注入当数据、质检 prompt 硬约束、链路级注入端到端 |
+| 回答质量 | 11 | 质检通过/重试/上限兜底、工具驱动回答不误判、打分失败放行、简短回答不被打回、分数与理由一致性钳制、整图端到端正常/重试路径 |
+| 可观测性 | 7 | SSE 事件序列完整性、token/工具调用/质检详情事件、异常事件带类型、LangSmith 环境配置、run metadata 注入 |
+| 联网开关与资料联动 | 14 | 壳词剥离、二次检索命中/无召回标记、开关关闭不补不执行 web_search、prompt 资料优先硬约束、联网规则随开关切换、资料类无召回 reviewer 防编造、出口兜底、有召回不误伤 |
+| 递归安全 | 1 | 连续低分打回 4 轮不触发 Recursion limit（recursion_limit=60 安全垫） |
+| 资料问法边界 | 3 | 资料范围覆盖上传文档（技术方案/规范）、"什么时候"不等于查纪念日、工具被拦截后基于资料重答 |
+| 上下文记忆 | 5 | 会话历史读取/当前问句排除/占位会话兜底、executor 与 planner prompt 历史注入、链路透传 |
+| 执行挂起防护 | 2 | executor LLM 流式调用超时兜底（挂起不卡死）、subtask_index 硬上限防无限循环 |
+| 联网来源标题 | 1 | 参考来源以 [标题](URL) 呈现（非裸域名），无标题行退化为裸链接 |
+
+评测用脚本化 FakeLLM + sqlite 内存库 + 内存 checkpointer，确定性高、速度快（约 5 秒）。
 
 ## 快速开始
 
@@ -245,4 +311,4 @@ MySQL 与 Redis 需自行启动，并保证 `backend/.env` 中的连接串可达
 - LLM 调用失败时部分接口直接返回空，尚未做优雅降级兜底；
 - Tavily 只能搜网页摘要，车票/酒店实时价格需接入垂直 API；
 - Redis checkpointer 的旧 thread 无自动清理，长期运行会缓慢增长；
-- 无单元测试 / 集成测试。
+- 评测套件已覆盖工具调用/注入防护/回答质量/可观测性/联网开关与资料联动/递归安全/资料问法边界/上下文记忆/执行挂起防护/联网来源标题（68 条），但暂未覆盖前端 E2E 与多用户并发场景。

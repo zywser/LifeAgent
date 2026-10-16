@@ -1,0 +1,4 @@
+# 评测（自动化测试）依赖：pip install -r requirements-dev.txt
+# 运行：cd backend && python -m pytest -v
+pytest==9.1.1
+pytest-asyncio==1.4.0
