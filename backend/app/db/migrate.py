@@ -24,7 +24,8 @@ def run_migrations() -> None:
     backend = _backend_dir()
     cfg = Config(str(backend / "alembic.ini"))
     cfg.set_main_option("script_location", str(backend / "alembic"))
-    cfg.set_main_option("sqlalchemy.url", settings.database_url)
+    # URL 不写入 config：密码可能含 '%'（URL 编码），configparser 会插值报错。
+    # env.py 直接从 settings.database_url 建引擎。
 
     engine = create_engine(settings.database_url)
     try:
