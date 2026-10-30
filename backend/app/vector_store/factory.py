@@ -40,6 +40,27 @@ def delete_note_vectors(uid: int, doc_id: str) -> int:
         client.delete(*keys)
     return len(keys)
 
+
+def delete_memory_vectors(uid: int, content: str) -> int:
+    """删除某条长期记忆对应的向量，返回删除的 key 数。
+
+    记忆写入时未指定可预测 key（由 redisvl 自动生成 uuid），因此扫描该
+    用户 memory_idx 下的全部记录，按文本内容（hash 的 text 字段）精确
+    匹配后删除；仅删除内容完全一致的记录，避免误删其他记忆。
+    """
+    store = get_memory_store(uid)
+    key_prefix = store.key_prefix or f"user:{uid}:memory_idx"
+    client = redis_lib.from_url(settings.redis_url)
+    target = (content or "").strip()
+    matched = []
+    for key in client.scan_iter(f"{key_prefix}:*"):
+        text = client.hget(key, "text")
+        if text is not None and text.strip() == target:
+            matched.append(key)
+    if matched:
+        client.delete(*matched)
+    return len(matched)
+
 async def get_checkpointer():
     global _checkpointer
     if _checkpointer is None:

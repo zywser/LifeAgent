@@ -9,7 +9,10 @@ from .db.models import User, Expense, Todo, Habit, SavingsGoal, Anniversary, Not
 from .llm import llm
 from .config import settings
 from .mailer import send_email, render_notify_html
+from .logging_config import get_logger
 from langchain_core.messages import HumanMessage, SystemMessage
+
+logger = get_logger("scheduler")
 
 # 所有定时任务按北京时间触发（服务器/Docker 容器默认 UTC，必须显式指定）
 TZ = ZoneInfo("Asia/Shanghai")
@@ -31,15 +34,16 @@ def _push(db, user_id, title, body):
         u = db.query(User).filter(User.id == user_id).first()
         if u and u.email and u.email_notify:
             send_email(u.email, f"【Life Agent】{title}", render_notify_html(title, body))
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("通知邮件发送失败（不影响站内通知）：%s", e)
 
 
 def _llm(prompt, system="你是贴心的生活管家，回答简洁温暖，不超过100字。"):
     try:
         resp = llm.invoke([SystemMessage(content=system), HumanMessage(content=prompt)])
         return resp.content
-    except Exception:
+    except Exception as e:
+        logger.warning("定时任务 LLM 调用失败，使用兜底文案：%s", e)
         return ""
 
 

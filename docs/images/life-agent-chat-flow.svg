@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="420" viewBox="0 0 1400 420" role="img" aria-labelledby="title desc">
+  <title id="title">Life Agent 对话数据流</title>
+  <desc id="desc">用户消息经由对话接口、历史上下文、LangGraph 节点、工具执行和 SSE 最终回答返回浏览器。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#475569"/></marker>
+    <style>
+      .title{font:700 28px 'Microsoft YaHei',Arial,sans-serif;fill:#0f172a}.label{font:600 16px 'Microsoft YaHei',Arial,sans-serif;fill:#0f172a}.sub{font:13px 'Microsoft YaHei',Arial,sans-serif;fill:#475569}.edge{stroke:#475569;stroke-width:2.4;fill:none;marker-end:url(#arrow)}.retry{stroke:#dc2626;stroke-width:2.4;fill:none;stroke-dasharray:7 5;marker-end:url(#arrow)}.box{stroke-width:2;rx:12}.blue{fill:#dbeafe;stroke:#2563eb}.purple{fill:#ede9fe;stroke:#7c3aed}.green{fill:#dcfce7;stroke:#16a34a}.orange{fill:#fef3c7;stroke:#d97706}.gray{fill:#f1f5f9;stroke:#64748b}.note{font:13px 'Microsoft YaHei',Arial,sans-serif;fill:#64748b}
+    </style>
+  </defs>
+  <rect width="1400" height="420" fill="#ffffff"/>
+  <text x="45" y="48" class="title">对话请求从输入到持久化的完整链路</text>
+  <text x="45" y="75" class="note">模型的工具调用只是一份决策；只有 Reviewer 通过后才会执行真正的写库操作。</text>
+
+  <rect x="45" y="172" width="130" height="88" class="box blue"/><text x="110" y="207" text-anchor="middle" class="label">用户输入</text><text x="110" y="233" text-anchor="middle" class="sub">Chat.vue</text>
+  <rect x="218" y="172" width="145" height="88" class="box blue"/><text x="290" y="207" text-anchor="middle" class="label">POST /chat</text><text x="290" y="233" text-anchor="middle" class="sub">JWT + 会话 ID</text>
+  <rect x="406" y="172" width="145" height="88" class="box gray"/><text x="478" y="207" text-anchor="middle" class="label">读取上下文</text><text x="478" y="233" text-anchor="middle" class="sub">MySQL 最近 10 条</text>
+  <rect x="594" y="172" width="125" height="88" class="box purple"/><text x="656" y="207" text-anchor="middle" class="label">Planner</text><text x="656" y="233" text-anchor="middle" class="sub">最多 3 个子任务</text>
+  <rect x="762" y="172" width="130" height="88" class="box purple"/><text x="827" y="207" text-anchor="middle" class="label">Retriever</text><text x="827" y="233" text-anchor="middle" class="sub">Redis 向量检索</text>
+  <rect x="935" y="172" width="125" height="88" class="box purple"/><text x="997" y="207" text-anchor="middle" class="label">Executor</text><text x="997" y="233" text-anchor="middle" class="sub">模型与 Tool 决策</text>
+  <rect x="1103" y="172" width="120" height="88" class="box purple"/><text x="1163" y="207" text-anchor="middle" class="label">Reviewer</text><text x="1163" y="233" text-anchor="middle" class="sub">评分 / 重试</text>
+  <rect x="1266" y="172" width="95" height="88" class="box orange"/><text x="1313" y="207" text-anchor="middle" class="label">执行 Tool</text><text x="1313" y="233" text-anchor="middle" class="sub">MySQL/Tavily</text>
+
+  <path d="M175 216 H218 M363 216 H406 M551 216 H594 M719 216 H762 M892 216 H935 M1060 216 H1103 M1223 216 H1266" class="edge"/>
+  <path d="M1163 172 C1163 115 656 115 656 172" class="retry"/>
+  <text x="909" y="119" text-anchor="middle" class="note">不通过：最多重规划 3 次</text>
+  <path d="M1313 260 V326 H290 V260" class="edge"/>
+  <text x="802" y="352" text-anchor="middle" class="label">SSE final 返回前端，逐字展示后保存 MySQL conversations</text>
+  <text x="802" y="379" text-anchor="middle" class="sub">工具成功结果还会写入 Redis memory_idx 和 MySQL memory_items</text>
+</svg>

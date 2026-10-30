@@ -38,7 +38,6 @@ const doneCount = computed(() => list.value.filter(t => t.done).length)
 
 // 未完成在前、按截止时间升序；完成的沉底
 const sortedList = computed(() => {
-  const now = Date.now()
   return [...list.value].sort((a, b) => {
     if (a.done !== b.done) return a.done ? 1 : -1
     const da = a.due_at ? new Date(a.due_at).getTime() : Number.MAX_SAFE_INTEGER

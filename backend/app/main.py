@@ -3,9 +3,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
+from .logging_config import setup_logging, get_logger
 from .config import settings
-from .db.base import Base
-from .db.session import engine
 from .auth.router import router as auth_router
 from .routes.chat import router as chat_router
 from .routes.notes import router as notes_router
@@ -18,32 +17,20 @@ from .routes.conversations import router as conversations_router
 from .routes.memory import router as memory_router
 from .scheduler import start_scheduler, shutdown_scheduler
 
+setup_logging()
+logger = get_logger("main")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 启动：建表 + 老库补字段 + 启动定时任务
-    Base.metadata.create_all(bind=engine)
-    from sqlalchemy import text, inspect
-    insp = inspect(engine)
-    with engine.begin() as conn:
-        if "expenses" in insp.get_table_names():
-            cols = [c["name"] for c in insp.get_columns("expenses")]
-            if "kind" not in cols:
-                conn.execute(text("ALTER TABLE expenses ADD kind VARCHAR(8) DEFAULT 'expense'"))
-        if "todos" in insp.get_table_names():
-            tcols = [c["name"] for c in insp.get_columns("todos")]
-            if "due_at" not in tcols:
-                conn.execute(text("ALTER TABLE todos ADD due_at DATETIME NULL"))
-            if "reminded" not in tcols:
-                conn.execute(text("ALTER TABLE todos ADD reminded INT DEFAULT 0"))
-        if "users" in insp.get_table_names():
-            ucols = [c["name"] for c in insp.get_columns("users")]
-            if "email_notify" not in ucols:
-                conn.execute(text("ALTER TABLE users ADD email_notify INT DEFAULT 1"))
-            if "username" not in ucols:
-                conn.execute(text("ALTER TABLE users ADD username VARCHAR(64) DEFAULT ''"))
-            if "avatar" not in ucols:
-                conn.execute(text("ALTER TABLE users ADD avatar VARCHAR(255) DEFAULT ''"))
+    # 启动：执行数据库迁移（新库建表 / 旧库 stamp / 已纳管库增量升级）+ 定时任务
+    from .db.migrate import run_migrations
+    from .alerting import alert
+    try:
+        run_migrations()
+    except Exception as e:
+        alert("db_migration", f"启动迁移失败：{e}")
+        raise
     start_scheduler()
     try:
         yield
@@ -54,16 +41,18 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
-# 临时诊断：记录 4xx/5xx 请求（定位 422/401 等前端报错来源）
+# 请求日志：4xx 记 warning、5xx 记 error，未捕获异常记 error 后继续抛出
 @app.middleware("http")
 async def log_bad_requests(request, call_next):
     try:
         response = await call_next(request)
     except Exception as e:
-        print(f"[{request.method}] {request.url.path} -> EXC {type(e).__name__}: {e}", flush=True)
+        logger.error("[%s] %s -> EXC %s: %s", request.method, request.url.path, type(e).__name__, e)
         raise
-    if response.status_code >= 400:
-        print(f"[{request.method}] {request.url.path} -> {response.status_code}", flush=True)
+    if response.status_code >= 500:
+        logger.error("[%s] %s -> %s", request.method, request.url.path, response.status_code)
+    elif response.status_code >= 400:
+        logger.warning("[%s] %s -> %s", request.method, request.url.path, response.status_code)
     return response
 
 uploads = Path("uploads"); uploads.mkdir(exist_ok=True)

@@ -36,7 +36,7 @@ flowchart LR
   E --> S[Synthesizer] --> V[Reviewer 质检]
   V -->|不通过 ≤ 3 次| P
   V -->|通过| API
-  API -->|真正执行工具| T[14 个 Tool]
+  API -->|真正执行工具| T[15 个 Tool]
   T --> DB[(MySQL 业务表)]
   T --> TV[Tavily 联网搜索]
   API -->|写回| M
@@ -56,11 +56,13 @@ Life Agent/
 │   ├── requirements.txt
 │   ├── requirements-dev.txt # 评测依赖（pytest + pytest-asyncio）
 │   ├── pytest.ini           # 评测配置（asyncio_mode=auto）
-│   ├── tests/               # 自动化评测（56 条：工具/注入/质量/可观测/联网开关与资料联动）
+│   ├── tests/               # 自动化评测（68 条离线用例 + 2 条真实 LLM e2e，默认跳过）
 │   ├── Dockerfile           # python:3.13-slim + tzdata（时区数据）
 │   └── app/
-│       ├── main.py          # FastAPI 入口：lifespan 建表/补列/起调度器
+│       ├── main.py          # FastAPI 入口：lifespan 跑数据库迁移/起调度器
 │       ├── config.py        # pydantic-settings（先 load_dotenv 供 LangSmith 读取）
+│       ├── logging_config.py # 统一 dictConfig 日志（LOG_LEVEL 可调，lifeagent 前缀）
+│       ├── alerting.py      # 告警模块（ALERT_EMAIL 邮件通道，节流防风暴）
 │       ├── llm.py           # ChatOpenAI + OpenAIEmbeddings（DashScope 兼容模式）
 │       ├── deps.py          # get_current_user（JWT Bearer）
 │       ├── auth/            # 注册（邮箱验证码）/登录/刷新 token（bcrypt + JWT + refresh 轮换）
@@ -69,14 +71,14 @@ Life Agent/
 │       ├── security.py      # AES-256-CBC 重置密码链接令牌
 │       ├── mailer.py        # 邮件发送 + HTML 模板（验证码/通知/重置链接）
 │       ├── db/              # SQLAlchemy 引擎/会话/表模型
-│       ├── graph/           # LangGraph 多智能体核心
+│       ├── graph/           # LangGraph 多智能体核心`·
 │       │   ├── state.py     # AgentState（节点间共享）
 │       │   ├── build.py     # StateGraph 拓扑与编译
 │       │   ├── nodes.py     # 节点实现（当前时间=北京时间）
 │       │   ├── router.py    # 条件路由
-│       │   └── tools.py     # 14 个 Tool Calling 工具
+│       │   └── tools.py     # 15 个 Tool Calling 工具
 │       ├── routes/          # chat/notes/life/summary/sync/conversations/memory/impression/notify
-│       ├── vector_store/    # Redis 向量库/checkpointer/删向量
+│       ├── vector_store/    #·
 │       ├── ingest/          # 笔记读取（md/txt/pdf/docx）与切分
 │       └── scheduler.py     # APScheduler 8 个定时任务（北京时间）
 ├── web/                     # Vue 3 前端（16 个页面）
@@ -118,9 +120,9 @@ START → supervisor → planner → retriever
 - 这样 reviewer 打回重试时不会重复写库；
 - 模型漏调用工具时，`chat.py` 按消息里的明确业务意图（打卡/喝水/纪念日/存钱等强信号）做关键词兜底补调，保证动作真实落库、查询有据可答。
 
-### 工具集（14 个）
+### 工具集（15 个）
 
-`record_expense`（记账）、`create_todo`（建待办，支持相对时间换算 ISO）、`write_diary`（写日记）、`web_search`（Tavily 联网搜索：车票/酒店/天气/新闻等实时信息）、`check_habit`/`query_habits`（习惯打卡/查询）、`add_anniversary`/`query_anniversary`（纪念日/倒计时）、`record_water`/`query_water`（喝水/近 7 天）、`query_savings`/`update_savings`（存钱）、`query_notes`/`query_memory`（笔记/记忆检索）。
+`record_expense`/`query_expenses`（记账/支出查询统计）、`create_todo`（建待办，支持相对时间换算 ISO）、`write_diary`（写日记）、`web_search`（Tavily 联网搜索：车票/酒店/天气/新闻等实时信息）、`check_habit`/`query_habits`（习惯打卡/查询）、`add_anniversary`/`query_anniversary`（纪念日/倒计时）、`record_water`/`query_water`（喝水/近 7 天）、`query_savings`/`update_savings`（存钱）、`query_notes`/`query_memory`（笔记/记忆检索）。
 
 `uid` 通过 `InjectedToolArg` 注入，对模型隐藏；所有向量索引、checkpoint thread 均带 `user:{uid}` 前缀实现用户隔离。
 
@@ -213,7 +215,8 @@ open http://localhost
 部署注意：
 - 前端路由基路径为 `/life/`（与 OA 系统同域共 Nginx，由 OA 的 nginx 反代 `/life/` 到本服务），独立部署时请把 `web/vite.config.js` 的 `base` 与 OA 侧代理路径保持一致；
 - 后端镜像已安装 `tzdata` 并设置 `TZ=Asia/Shanghai`，定时任务与时间判断均为北京时间；
-- `.env` 中 `DATABASE_URL` / `REDIS_URL` 使用服务名（`mysql` / `redis`），若复用 OA 的 MySQL/Redis 改为对应网络服务名。
+- `.env` 中 `DATABASE_URL` / `REDIS_URL` 使用服务名（`mysql` / `redis`），若复用 OA 的 MySQL/Redis 改为对应网络服务名；
+- 数据备份：`deploy/backup.sh` 同时做 mysqldump 逻辑备份与 Redis RDB 备份（gzip 压缩、按 `RETAIN_DAYS` 清理，默认保留 7 天），脚本头注释含 cron 配置示例，建议挂载每天定时任务。
 
 ### 方式二：本地开发
 
@@ -247,6 +250,8 @@ MySQL 与 Redis 需自行启动，并保证 `backend/.env` 中的连接串可达
 | `VERIFY_CODE_TTL` | 邮箱验证码有效期（秒），默认 600 |
 | `VERIFY_CODE_COOLDOWN` | 验证码重发冷却（秒），默认 60 |
 | `LANGSMITH_*` | LangSmith 链路追踪（可选） |
+| `LOG_LEVEL` | 日志级别（INFO/DEBUG/WARNING 等，默认 INFO） |
+| `ALERT_EMAIL` | 告警接收邮箱，留空只记日志不发邮件；同一事件 5 分钟内最多一封 |
 
 ## 账号安全
 
@@ -305,10 +310,14 @@ MySQL 与 Redis 需自行启动，并保证 `backend/.env` 中的连接串可达
 - CORS 白名单来自 `.env`，`SECRET_KEY` 无默认值（缺失直接启动失败）；
 - `.env` 已被 `.gitignore` 排除，仓库仅含 `.env.example`。
 
-## 已知限制
+## 能力边界与已知限制
 
-- 数据库无 Alembic 迁移，新表靠 `create_all` + 启动时 `ALTER` 补列，生产环境建议引入迁移工具；
-- LLM 调用失败时部分接口直接返回空，尚未做优雅降级兜底；
-- Tavily 只能搜网页摘要，车票/酒店实时价格需接入垂直 API；
-- Redis checkpointer 的旧 thread 无自动清理，长期运行会缓慢增长；
-- 评测套件已覆盖工具调用/注入防护/回答质量/可观测性/联网开关与资料联动/递归安全/资料问法边界/上下文记忆/执行挂起防护/联网来源标题（68 条），但暂未覆盖前端 E2E 与多用户并发场景。
+为避免过度承诺，以下边界均为当前实现的真实状态，未做夸大：
+
+- **规模未做压测验证**：项目面向单用户个人场景设计，未在大规模文档库（当前仅验证个位数文档、单库约 14 张表）与多用户高并发下做过性能/容量压测，不保证该场景下的检索延迟与吞吐；
+- **多节点链路带来首 token 延迟**：一次问答需经过 supervisor→planner→retriever→executor→synthesizer→reviewer 六个节点，planner/executor/reviewer 均有 LLM 调用，首个 token 到达时间明显长于单轮直答；reviewer 打回重试还会进一步放大延迟（已用资料类重试降为 1 次、超时 60s 兜底等手段收敛，但无法消除多节点固有开销）；
+- **通用联网搜索拿不到实时交易数据**：Tavily 只返回网页摘要，车票、酒店、机票等实时价格/余票需接入对应垂直 API，通用搜索结果不代表可下单的真实数据；
+- **运维侧仍需人工介入**：Redis checkpointer 旧 thread 无自动清理，长期运行会缓慢增长；备份脚本（`deploy/backup.sh`）需手动配置 cron 才会周期执行；
+- **已收敛的历史短板**：数据库已引入 Alembic 迁移（启动时自动 stamp/upgrade，不再靠 `create_all` + 硬编码 `ALTER`）；全项目静默 `except` 已补结构化日志，LLM 等外部依赖失败均有 warning/error 可追溯，不再无声降级；
+- **测试覆盖边界**：后端 68 条离线用例（FakeLLM，约 6 秒）+ 2 条真实 LLM 端到端用例（默认跳过，`RUN_REAL_LLM_E2E=1` 手动触发）+ 前端 13 条 Vitest 单测；尚未覆盖浏览器级 E2E 与真实多用户并发。
+

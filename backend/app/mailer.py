@@ -9,6 +9,9 @@ from email.header import Header
 from email.mime.text import MIMEText
 
 from .config import settings
+from .logging_config import get_logger
+
+logger = get_logger("mailer")
 
 
 def send_email(to_email: str, subject: str, html_body: str) -> bool:
@@ -29,7 +32,8 @@ def send_email(to_email: str, subject: str, html_body: str) -> bool:
         server.sendmail(settings.smtp_from or settings.smtp_user, [to_email], msg.as_string())
         server.quit()
         return True
-    except Exception:
+    except Exception as e:
+        logger.warning("邮件发送失败（to=%s）：%s", to_email, e)
         return False
 
 

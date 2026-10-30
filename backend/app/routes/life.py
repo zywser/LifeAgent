@@ -11,8 +11,10 @@ from ..llm import llm
 from ..vector_store.factory import get_memory_store
 from langchain_core.messages import HumanMessage, SystemMessage
 from ..db.session import get_db, SessionLocal
+from ..logging_config import get_logger
 
 router = APIRouter(prefix="/life", tags=["life"])
+logger = get_logger("life")
 
 
 # ===== Expense =====
@@ -52,7 +54,8 @@ def add_todo(body: TodoIn, user: User = Depends(get_current_user), db: Session =
     if body.due_at:
         try:
             due = datetime.fromisoformat(body.due_at)
-        except Exception:
+        except Exception as e:
+            logger.warning("待办时间解析失败（due_at=%s）：%s", body.due_at, e)
             due = None
     t = Todo(user_id=user.id, text=body.text, due_at=due)
     db.add(t); db.commit(); db.refresh(t)
@@ -151,7 +154,8 @@ class SavingsIn(BaseModel):
 def add_savings(body: SavingsIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     try:
         dl = date.fromisoformat(body.deadline)
-    except Exception:
+    except Exception as e:
+        logger.warning("储蓄目标截止日期格式错误（deadline=%s）：%s", body.deadline, e)
         raise HTTPException(400, "deadline 格式应为 YYYY-MM-DD")
     g = SavingsGoal(user_id=user.id, purpose=body.purpose, target_amount=body.target_amount,
                     saved_amount=body.saved_amount, deadline=dl)
@@ -172,7 +176,8 @@ def update_savings(gid: int, body: SavingsIn, user: User = Depends(get_current_u
     if not g: raise HTTPException(404)
     try:
         dl = date.fromisoformat(body.deadline)
-    except Exception:
+    except Exception as e:
+        logger.warning("更新储蓄目标截止日期格式错误（deadline=%s）：%s", body.deadline, e)
         raise HTTPException(400, "deadline 格式应为 YYYY-MM-DD")
     g.purpose = body.purpose
     g.target_amount = body.target_amount
@@ -199,7 +204,8 @@ def add_anniv(body: AnnivIn, user: User = Depends(get_current_user), db: Session
         month, day = body.event_date.split("-")
         yr = body.year if body.year else datetime.now(_BJ).date().year
         ev = date(yr, int(month), int(day))
-    except Exception:
+    except Exception as e:
+        logger.warning("纪念日日期格式错误（event_date=%s）：%s", body.event_date, e)
         raise HTTPException(400, "event_date 格式应为 MM-DD，如 06-01")
     a = Anniversary(user_id=user.id, name=body.name, event_date=ev, year=body.year)
     db.add(a); db.commit(); db.refresh(a)
@@ -239,7 +245,8 @@ def add_diary(body: DiaryIn, user: User = Depends(get_current_user), db: Session
             HumanMessage(content=f"用户心情：{body.mood}\n日记：{body.content}\n今日支出：¥{spent:.2f}\n未完成待办：{len(todos)}条")
         ])
         d.summary = resp.content
-    except Exception:
+    except Exception as e:
+        logger.warning("日记小结生成失败，置空：%s", e)
         d.summary = ""
     db.add(d); db.commit(); db.refresh(d)
     try:
@@ -255,8 +262,8 @@ def add_diary(body: DiaryIn, user: User = Depends(get_current_user), db: Session
             mdb.commit()
         finally:
             mdb.close()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("日记记忆沉淀失败：%s", e)
     return {"id": d.id, "mood": d.mood, "content": d.content, "summary": d.summary,
             "date": d.created_at.strftime("%Y-%m-%d %H:%M") if d.created_at else ""}
 
@@ -278,7 +285,8 @@ def mood_trend(user: User = Depends(get_current_user), db: Session = Depends(get
             HumanMessage(content=data)
         ])
         return {"analysis": resp.content, "count": len(rows)}
-    except Exception:
+    except Exception as e:
+        logger.warning("日记情绪分析失败，返回空分析：%s", e)
         return {"analysis": "", "count": len(rows)}
 
 
@@ -319,7 +327,8 @@ def list_water(user: User = Depends(get_current_user), db: Session = Depends(get
 def set_water(body: WaterIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     try:
         d = date.fromisoformat(body.date) if body.date else datetime.now(_BJ).date()
-    except Exception:
+    except Exception as e:
+        logger.warning("喝水记录日期格式错误（date=%s）：%s", body.date, e)
         raise HTTPException(400, "date 格式应为 YYYY-MM-DD")
     cups = max(0, int(body.cups))
     row = db.query(WaterLog).filter(WaterLog.user_id == user.id, WaterLog.log_date == d).first()

@@ -14,9 +14,12 @@ from ..graph.build import build_graph
 from ..graph.tools import TOOL_MAP
 from ..graph.nodes import is_personal_data_query
 from ..llm import llm
+from ..logging_config import get_logger
+from ..alerting import alert
 from ..vector_store.factory import get_memory_store
 
 router = APIRouter(tags=["chat"])
+logger = get_logger("chat")
 
 
 class ChatRequest(BaseModel):
@@ -49,7 +52,8 @@ def load_history_text(db: Session, user_id: int, session_id: str | None, current
         return ""
     try:
         msgs = json.loads(c.messages or "[]")
-    except Exception:
+    except Exception as e:
+        logger.warning("会话历史解析失败，按无历史处理：%s", e)
         return ""
     lines = []
     for m in msgs[-limit:]:
@@ -199,7 +203,8 @@ def _source_link(pair: tuple[str, str]) -> str:
         # 无标题结果（Tavily 某些结果标题为空）：显示域名而不是裸 URL
         try:
             title = urlparse(url).netloc or url
-        except Exception:
+        except Exception as e:
+            logger.warning("来源链接域名解析失败，使用完整 URL：%s", e)
             title = url
     return f"- [{title}]({url})"
 
@@ -245,8 +250,9 @@ async def summarize_answer(query: str, results: list[str]) -> str:
             out = out + "\n\n参考来源：\n" + "\n".join(_source_link(p) for p in pairs)
         # 兜底：LLM 可能把来源 URL 原样写进正文（裸链接），统一转成 [名称](链接)
         return _linkify_bare_urls(out, pairs)
-    except Exception:
+    except Exception as e:
         # 总结失败：退回原始拼接（含来源链接），同样做裸 URL 转链接处理
+        logger.warning("回答总结失败，使用原始拼接兜底：%s", e)
         return _linkify_bare_urls(joined, pairs)
 
 
@@ -274,7 +280,8 @@ async def answer_from_notes(query: str, notes: str, memory: str) -> str:
             HumanMessage(content=f"用户问：{query}\n\n资料检索结果：\n{ctx}\n{mem}\n\n直接输出回答。"),
         ])
         return (resp.content or "").strip()
-    except Exception:
+    except Exception as e:
+        logger.warning("基于资料重答失败，返回空串走兜底：%s", e)
         return ""
 
 
@@ -308,6 +315,7 @@ async def execute_tool_calls(tool_calls: list[dict], uid: int, message: str = ""
             results.append(await tool.ainvoke(args))
         except Exception as exc:
             # 不静默吞异常：失败原因直接进结果，用户能看到"搜索失败"而不是无回复
+            logger.warning("工具「%s」执行失败：%s", name, exc)
             results.append(f"⚠️ 工具「{name}」执行失败：{exc}")
     return results
 
@@ -441,9 +449,9 @@ async def run_chat_stream(graph, message: str, uid: int, session_id: str = "defa
                     [mem_content],
                     metadatas=[{"user_id": uid, "type": "memory"}],
                 )
-            except Exception:
+            except Exception as e:
                 # 记忆沉淀失败（embedding 限流 / Redis 抖动）不影响本次回答
-                pass
+                logger.warning("向量记忆沉淀失败：%s", e)
             # 同步落库，供"经验记忆"页面展示
             try:
                 mdb = SessionLocal()
@@ -452,11 +460,13 @@ async def run_chat_stream(graph, message: str, uid: int, session_id: str = "defa
                     mdb.commit()
                 finally:
                     mdb.close()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("记忆落库失败：%s", e)
         yield sse("final", {"answer": answer})
     except Exception as exc:
         # 异常事件带类型，前端可以区分"LLM 超时/向量库不可用/其他"分别提示
+        logger.error("对话流异常（%s）：%s", type(exc).__name__, exc)
+        alert("chat_stream", str(exc), error_type=type(exc).__name__)
         yield sse("error", {"message": str(exc), "error_type": type(exc).__name__})
 
 

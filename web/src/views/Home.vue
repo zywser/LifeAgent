@@ -274,17 +274,6 @@ function goChat() {
   if (run._round) { router.push('/chat'); return }
   run.newChat(); router.push('/chat')
 }
-function openChat(c){
-  // 回答进行中且点击的正是发起会话：store 已是最新现场，直接切回，避免覆盖丢失进行中的用户消息
-  if (run._round?.id && String(c.id) === String(run._round.id)) {
-    router.push(`/chat/s/${c.id}`); return
-  }
-  // 回答进行中也可切换其他会话：进行中的回答由 round 上下文接管，完成时保存回原会话
-  run.loadConversation(c)
-  // 每个历史会话独立路由（豆包/DeepSeek 式）；无数字 id 的本地占位走 /chat
-  router.push(c.id && /^\d+$/.test(String(c.id)) ? `/chat/s/${c.id}` : '/chat')
-}
-async function toggleTodo(t){ await api.put(`/life/todos/${t.id}`); t.done = !t.done; localStorage.setItem('lifeagent_todos', JSON.stringify(todos.value)) }
 
 async function doSync(){
   syncing.value = true

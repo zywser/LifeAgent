@@ -103,7 +103,7 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick, watch, onActivated, onDeactivated } from 'vue'
+import { ref, computed, nextTick, watch, onActivated } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useRunStore } from '../stores/run'
@@ -212,14 +212,11 @@ watch(() => route.params.id, (id) => {
 // 组件激活标记：仅在 chat 页可见时做 URL 收尾跳转，避免切到别的页面被强制跳回；
 // 同时兜底：无论以何种方式回到 /chat（非 watch 路径，如浏览器前进后退），
 // 无会话 id 一律清成新对话欢迎页（回答进行中除外，round 接管现场）。
-let isActive = true
 onActivated(() => {
-  isActive = true
   // 兜底：任何方式回到 /chat（无 id）→ 保持欢迎页空白；
   // 例外：回答进行中（round 接管）或当前对话有内容（保留问答现场）
   if (!route.params.id && !run.running && !(run.currentIsActive && run.messages.length)) run.newChat()
 })
-onDeactivated(() => { isActive = false })
 
 // —— 消息日期分组（兼容旧数据：无 time 的消息不显示时间、不产生分隔线）——
 function dateOf(m) {

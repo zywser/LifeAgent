@@ -40,7 +40,6 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
 import { useRunStore } from '../stores/run'
 const run = useRunStore()
 

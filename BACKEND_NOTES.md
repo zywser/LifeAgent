@@ -11,12 +11,15 @@ backend/
 ├── requirements.txt
 ├── requirements-dev.txt     评测依赖（pytest + pytest-asyncio）
 ├── pytest.ini               评测配置
-├── tests/                   ⭐ 自动化评测（56 条，全部离线可复现）
+├── alembic.ini / alembic/   数据库迁移（基线 0001，启动时自动 stamp/upgrade）
+├── tests/                   ⭐ 自动化评测（68 条离线 + 2 条真实 LLM e2e，默认跳过）
 ├── sql/init.sql             建表 SQL
 ├── Dockerfile
 └── app/
-    ├── main.py              FastAPI app 入口（lifespan、路由挂载）
+    ├── main.py              FastAPI app 入口（lifespan 跑迁移、路由挂载）
     ├── config.py            Settings + LangSmith 显式环境注入
+    ├── logging_config.py    统一 dictConfig 日志（LOG_LEVEL，lifeagent 前缀）
+    ├── alerting.py          告警（ALERT_EMAIL 邮件 + 节流防风暴）
     ├── llm.py               ChatOpenAI + embeddings
     ├── deps.py              依赖注入（get_current_user）
     │
@@ -27,14 +30,15 @@ backend/
     ├── db/
     │   ├── base.py          SQLAlchemy 基类
     │   ├── session.py       同步 SessionLocal
-    │   └── models.py        9 张业务表
+    │   ├── migrate.py       启动迁移入口（新库 upgrade / 旧库 stamp）
+    │   └── models.py        14 张业务表
     │
     ├── graph/               ⭐ LangGraph 多智能体核心
     │   ├── state.py         AgentState（节点间共享状态）
     │   ├── build.py         StateGraph 编译（节点+边）
     │   ├── nodes.py         6 个节点实现（reviewer 带一致性钳制）
     │   ├── router.py        条件边
-    │   └── tools.py         14 个 Tool Calling 工具
+    │   └── tools.py         15 个 Tool Calling 工具
     │
     ├── routes/              业务 API
     │   ├── chat.py          SSE 流式对话（run_chat_stream 可独立评测）
@@ -114,7 +118,7 @@ graph.add_conditional_edges("reviewer", route_after_reviewer,
 | `synthesizer` | 把多个子任务结果串成一段自然的回答 |
 | `reviewer` | LLM 打分（≥7 通过），不通过打回 planner，最多 3 次 |
 
-### 4. `graph/tools.py` —— 4 个工具
+### 4. `graph/tools.py` —— 核心工具（完整 15 个，下表列最常用 4 个）
 
 | 工具 | 作用 |
 |---|---|
@@ -167,7 +171,7 @@ embeddings = OpenAIEmbeddings(
 
 ### `db/models.py`
 
-9 张表：User、RefreshToken、Note、Expense、Todo、Habit、SavingsGoal、Diary、Anniversary、Notification。
+14 张表：User、RefreshToken、Note、Expense、Todo、Habit、HabitLog、SavingsGoal、Diary、Anniversary、Notification、Conversation、MemoryItem、WaterLog。
 
 ### `scheduler.py`
 
@@ -239,9 +243,10 @@ InMemorySaver 替换 Redis checkpointer、FakeStore/SelectiveStore 替换向量�
 
 ## 六、生产差距（可以说的改进方向）
 
-- 数据库迁移用 Alembic，现在靠 `sql/init.sql`
-- 异常 fallback：LLM 调用失败时的优雅降级
+- ~~数据库迁移用 Alembic~~：已落地（`alembic/` + 启动自动 stamp/upgrade，基线 0001 与模型反射快照等价）
+- ~~异常 fallback~~：全项目静默 except 已补结构化日志，外部依赖失败均有 warning/error，并接入告警模块（`alerting.py`，ALERT_EMAIL 邮件 + 节流）
+- 数据备份：`deploy/backup.sh`（mysqldump + Redis RDB，保留期清理），需手动挂 cron
 - 车票/酒店实时数据要接垂直 API（Tavily 只能搜网页摘要）
-- 评测未覆盖前端 E2E 与多用户并发；提示词注入为离线规则级验证，生产建议叠加云端护栏
-- "资料问答技能按钮"（显式锁定只答资料模式）按用户决策暂缓，视模块一+二实际效果再定
+- 大规模文档库与多用户并发未做压测；多节点链路首 token 延迟为固有开销
+- 评测未覆盖浏览器级 E2E 与真实多用户并发；提示词注入为离线规则级验证，生产建议叠加云端护栏
 - Redis checkpointer 旧 thread 无自动清理

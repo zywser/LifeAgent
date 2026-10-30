@@ -19,7 +19,10 @@ from urllib.parse import urlparse
 from ..config import settings
 from ..db.session import SessionLocal
 from ..db.models import Expense, Todo, Diary, Habit, HabitLog, Anniversary, SavingsGoal, WaterLog
+from ..logging_config import get_logger
 from ..vector_store.factory import get_notes_store, get_memory_store
+
+logger = get_logger("tools")
 
 
 @tool
@@ -100,7 +103,8 @@ def create_todo(
     if due_at:
         try:
             due_dt = datetime.fromisoformat(due_at)
-        except Exception:
+        except Exception as e:
+            logger.warning("待办时间解析失败，按无时间处理（due_at=%s）：%s", due_at, e)
             due_dt = None
     db = SessionLocal()
     try:
@@ -146,6 +150,7 @@ def web_search(query: str, uid: Annotated[int, InjectedToolArg] = None) -> str:
         )
     except Exception as exc:
         # 搜索失败也要把原因返回给用户，而不是让上层静默吞掉
+        logger.warning("Tavily 联网搜索失败：%s", exc)
         return f"联网搜索失败：{exc}（请检查 TAVILY_API_KEY 与网络后重试）"
     lines = []
     if resp.get("answer"):
@@ -243,7 +248,8 @@ def add_anniversary(
     try:
         month, day = event_date.split("-")
         ev = date(datetime.now(_BJ).date().year, int(month), int(day))
-    except Exception:
+    except Exception as e:
+        logger.warning("纪念日日期格式错误（event_date=%s）：%s", event_date, e)
         return "日期格式不对，请用 MM-DD 格式（如 06-01）再说一次。"
     try:
         exists = db.query(Anniversary).filter(
@@ -389,7 +395,8 @@ def query_notes(
         if not docs:
             return "没在笔记里找到相关内容。"
         return "\n".join(f"- {d.page_content}" for d in docs)
-    except Exception:
+    except Exception as e:
+        logger.warning("笔记检索失败：%s", e)
         return "检索笔记失败，稍后再试。"
 
 
@@ -404,7 +411,8 @@ def query_memory(
         if not docs:
             return "没在历史记忆中找到相关内容。"
         return "\n".join(f"- {d.page_content}" for d in docs)
-    except Exception:
+    except Exception as e:
+        logger.warning("记忆检索失败：%s", e)
         return "检索记忆失败，稍后再试。"
 
 

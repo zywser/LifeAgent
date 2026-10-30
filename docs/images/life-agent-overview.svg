@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="760" viewBox="0 0 1400 760" role="img" aria-labelledby="title desc">
+  <title id="title">Life Agent 全局数据流</title>
+  <desc id="desc">浏览器通过 FastAPI 访问 MySQL、LangGraph、Redis、Tavily、调度器和邮件服务。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#475569"/></marker>
+    <style>
+      .title{font:700 30px 'Microsoft YaHei',Arial,sans-serif;fill:#0f172a}.label{font:600 19px 'Microsoft YaHei',Arial,sans-serif;fill:#0f172a}.sub{font:15px 'Microsoft YaHei',Arial,sans-serif;fill:#475569}.edge{stroke:#475569;stroke-width:2.5;fill:none;marker-end:url(#arrow)}.dash{stroke:#64748b;stroke-width:2.5;fill:none;stroke-dasharray:8 6;marker-end:url(#arrow)}.box{stroke-width:2;rx:14}.browser{fill:#e0f2fe;stroke:#0284c7}.api{fill:#dbeafe;stroke:#2563eb}.agent{fill:#ede9fe;stroke:#7c3aed}.store{fill:#dcfce7;stroke:#16a34a}.service{fill:#fef3c7;stroke:#d97706}.cache{fill:#f1f5f9;stroke:#64748b}.note{font:14px 'Microsoft YaHei',Arial,sans-serif;fill:#64748b}
+    </style>
+  </defs>
+  <rect width="1400" height="760" fill="#ffffff"/>
+  <text x="56" y="58" class="title">Life Agent 全局数据流</text>
+  <text x="56" y="88" class="note">实线表示请求或写入，虚线表示异步读取、缓存或通知。</text>
+
+  <rect x="56" y="270" width="210" height="128" class="box browser"/>
+  <text x="161" y="318" text-anchor="middle" class="label">Vue 3 浏览器</text>
+  <text x="161" y="348" text-anchor="middle" class="sub">页面、Pinia、localStorage</text>
+  <text x="161" y="374" text-anchor="middle" class="sub">JWT / HTTP / SSE</text>
+
+  <rect x="385" y="245" width="235" height="178" class="box api"/>
+  <text x="502" y="301" text-anchor="middle" class="label">FastAPI</text>
+  <text x="502" y="331" text-anchor="middle" class="sub">JWT 鉴权与 API 路由</text>
+  <text x="502" y="357" text-anchor="middle" class="sub">/life、/notes、/chat</text>
+  <text x="502" y="383" text-anchor="middle" class="sub">/conversations、/notify</text>
+
+  <rect x="748" y="130" width="245" height="158" class="box agent"/>
+  <text x="870" y="181" text-anchor="middle" class="label">LangGraph Agent</text>
+  <text x="870" y="211" text-anchor="middle" class="sub">规划、检索、执行、质检</text>
+  <text x="870" y="237" text-anchor="middle" class="sub">先决策，后执行 Tool</text>
+
+  <rect x="748" y="405" width="245" height="122" class="box store"/>
+  <text x="870" y="451" text-anchor="middle" class="label">MySQL</text>
+  <text x="870" y="481" text-anchor="middle" class="sub">用户、业务数据、对话</text>
+  <text x="870" y="507" text-anchor="middle" class="sub">通知、笔记文本、记忆条目</text>
+
+  <rect x="1098" y="120" width="230" height="168" class="box cache"/>
+  <text x="1213" y="169" text-anchor="middle" class="label">Redis</text>
+  <text x="1213" y="199" text-anchor="middle" class="sub">用户笔记 / 长期记忆向量</text>
+  <text x="1213" y="225" text-anchor="middle" class="sub">LangGraph Checkpointer</text>
+  <text x="1213" y="251" text-anchor="middle" class="sub">验证码 / 通知缓存</text>
+
+  <rect x="1098" y="390" width="230" height="92" class="box service"/>
+  <text x="1213" y="429" text-anchor="middle" class="label">外部服务</text>
+  <text x="1213" y="458" text-anchor="middle" class="sub">Qwen、Tavily、SMTP</text>
+
+  <rect x="390" y="558" width="225" height="106" class="box service"/>
+  <text x="502" y="602" text-anchor="middle" class="label">APScheduler</text>
+  <text x="502" y="632" text-anchor="middle" class="sub">待办、习惯、纪念日、存钱提醒</text>
+
+  <path d="M266 319 H385" class="edge"/>
+  <text x="325" y="302" text-anchor="middle" class="note">API 请求</text>
+  <path d="M385 370 H266" class="edge"/>
+  <text x="325" y="397" text-anchor="middle" class="note">JSON / SSE</text>
+  <path d="M620 277 L748 223" class="edge"/>
+  <text x="683" y="231" text-anchor="middle" class="note">/chat</text>
+  <path d="M620 383 L748 443" class="edge"/>
+  <text x="682" y="430" text-anchor="middle" class="note">业务 CRUD</text>
+  <path d="M993 205 H1098" class="edge"/>
+  <text x="1046" y="190" text-anchor="middle" class="note">向量检索 / 状态</text>
+  <path d="M993 246 L1098 403" class="edge"/>
+  <text x="1063" y="333" text-anchor="middle" class="note">模型 / 搜索</text>
+  <path d="M993 468 H1098" class="dash"/>
+  <text x="1046" y="492" text-anchor="middle" class="note">通知邮件</text>
+  <path d="M615 611 L748 506" class="edge"/>
+  <text x="682" y="580" text-anchor="middle" class="note">读写提醒</text>
+  <path d="M748 265 C700 335 700 392 748 430" class="edge"/>
+  <text x="683" y="348" text-anchor="middle" class="note">通过后执行 Tool</text>
+</svg>

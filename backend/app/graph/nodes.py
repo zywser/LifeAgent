@@ -17,7 +17,11 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from .state import AgentState
 from .tools import TOOLS
 from ..llm import llm
+from ..logging_config import get_logger
+from ..alerting import alert
 from ..vector_store.factory import get_notes_store, get_memory_store
+
+logger = get_logger("nodes")
 
 
 def _text(response) -> str:
@@ -124,7 +128,8 @@ async def planner(state: AgentState) -> dict:
         plan = _extract_json_list(_text(resp))[:3]
         if not plan:
             raise ValueError("empty plan")
-    except Exception:
+    except Exception as e:
+        logger.warning("planner 规划失败，使用兜底计划：%s", e)
         plan = ["理解需求与约束", "结合个人知识与历史经验制定方案", "校验预算与可执行性"]
     return {
         "plan": plan,
@@ -312,8 +317,9 @@ async def synthesizer(state: AgentState) -> dict:
             HumanMessage(content=SYNTH_PROMPT.format(query=state["query"], parts=parts)),
         ])
         answer = _text(resp)
-    except Exception:
+    except Exception as e:
         # 汇总失败：简单拼接兜底
+        logger.warning("synthesizer 汇总失败，使用拼接兜底：%s", e)
         answer = "\n".join(valid)
 
     return {"draft_answer": answer, "next_step": "reviewer"}
@@ -414,8 +420,9 @@ async def reviewer(state: AgentState) -> dict:
         reason = str(verdict.get("reason", ""))
         # 代码级一致性钳制：理由批评严厉时不允许高分，与 prompt 约束双保险
         score = clamp_score_for_reason(score, reason)
-    except Exception:
+    except Exception as e:
         # 打分本身失败：默认放行，避免卡死整个链路
+        logger.warning("reviewer 打分失败，默认放行：%s", e)
         score, reason = PASS_SCORE, "打分失败，默认放行"
 
     if score >= PASS_SCORE:
@@ -424,6 +431,7 @@ async def reviewer(state: AgentState) -> dict:
 
     if retries >= max_retries:
         # 重试次数用完，兜底放行，避免无限循环
+        alert("quality_retry_exhausted", reason, retries=retries, score=score)
         return {"final_answer": answer, "review_score": score,
                 "review_reason": f"{reason}（已达重试上限）",
                 "next_step": "finish", "error": ""}

@@ -8,11 +8,13 @@ from ..deps import get_current_user
 from ..config import settings
 from ..mailer import send_email, render_verify_html, render_reset_html
 from ..security import encrypt_link_token, decrypt_link_token
+from ..logging_config import get_logger
 import hashlib, random
 from datetime import datetime, timezone
 import redis as redis_lib
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+logger = get_logger("auth")
 
 _r = redis_lib.from_url(settings.redis_url, decode_responses=True)
 
@@ -82,7 +84,8 @@ def login(data: Credentials, db: Session = Depends(get_db)):
 def refresh(data: RefreshRequest, db: Session = Depends(get_db)):
     try:
         payload = decode_token(data.refresh_token, "refresh")
-    except Exception:
+    except Exception as e:
+        logger.warning("refresh token 解析失败：%s", e)
         raise HTTPException(401, "invalid refresh token")
     record = db.query(RefreshToken).filter(RefreshToken.token_hash == hashlib.sha256(data.refresh_token.encode()).hexdigest(), RefreshToken.revoked == 0).first()
     if not record or record.expires_at.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):

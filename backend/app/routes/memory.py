@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from ..deps import get_current_user
 from ..db.models import User, MemoryItem
 from ..db.session import get_db
+from ..vector_store.factory import delete_memory_vectors
 
 router = APIRouter(prefix="/memory", tags=["memory"])
 
@@ -44,6 +45,8 @@ def del_memory(mid: int, user: User = Depends(get_current_user), db: Session = D
     )
     if not m:
         raise HTTPException(404, "记忆不存在")
+    # 先清理向量库再删 DB 记录；DB 记录保留便于清理失败时重试
+    vectors_deleted = delete_memory_vectors(user.id, m.content)
     db.delete(m)
     db.commit()
-    return {"ok": True}
+    return {"ok": True, "vectors_deleted": vectors_deleted}
